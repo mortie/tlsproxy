@@ -13,8 +13,10 @@ function parseUrl(req, res, url) {
 
 var actions = {
 	"redirect": function(req, res, action) {
-		if (action.to === undefined)
+		if (action.to === undefined) {
+			res.writeHead(500);
 			return res.end("Option 'to' not provided");
+		}
 
 		var code = 302;
 		if (action.code)
@@ -28,8 +30,10 @@ var actions = {
 	},
 
 	"proxy": function(req, res, action) {
-		if (action.to === undefined)
+		if (action.to === undefined) {
+			res.writeHead(500);
 			return res.end("Option 'to' not provided");
+		}
 
 		var to = parseUrl(req, res, action.to);
 		var url = urllib.parse(to);
@@ -56,6 +60,7 @@ var actions = {
 		} else if (url.protocol === "http:") {
 			preq = http.request(options, onResponse);
 		} else {
+			res.writeHead(400);
 			return res.end("Unknown protocol: "+url.protocol);
 		}
 
@@ -64,6 +69,7 @@ var actions = {
 			.on("end", () => preq.end());
 
 		preq.on("error", function(err) {
+			res.writeHead(502);
 			res.end(err.toString());
 		});
 	}
