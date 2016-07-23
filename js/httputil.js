@@ -50,7 +50,6 @@ var actions = {
 			path: url.path + req.url.substring(1),
 			headers: req.headers
 		}
-		console.log(options);
 
 		if (url.protocol === "https:") {
 			preq = https.request(options, onResponse);
@@ -76,7 +75,7 @@ function Server(port, protocol) {
 	var domains = {};
 
 	function onRequest(req, res) {
-		var domain = req.headers.host;
+		var domain = req.headers.host.split(":")[0];
 		var action = domains[domain];
 
 		if (action === undefined)

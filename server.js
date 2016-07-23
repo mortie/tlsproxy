@@ -16,7 +16,6 @@ function add(path, obj) {
 		throw "Expected object, got "+(typeof obj)+" at "+path;
 
 	var host = obj.host;
-	var port = obj.port;
 	var action = obj.action;
 
 	var missing = [];
@@ -28,10 +27,12 @@ function add(path, obj) {
 		throw "Missing keys "+missing.join(", ")+" at "+path;
 
 	var url = urllib.parse(host);
-	var protocol =url.protocol;
+
+	var port = url.port;
+	var protocol = url.protocol;
 	var domain = url.hostname;
 
-	if (port === undefined) {
+	if (port === null) {
 		if (protocol === "http:")
 			port = 80;
 		else if (protocol === "https:")
