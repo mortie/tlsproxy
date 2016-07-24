@@ -1,3 +1,9 @@
+#!/usr/bin/env node
+
+var confpath = process.env.PROXY_CONF;
+if (!confpath)
+	confpath = "/etc/mproxy";
+
 var fs = require("fs");
 var pathlib = require("path");
 var urllib = require("url");
@@ -5,10 +11,9 @@ var mkdirp = require("mkdirp");
 var certutil = require("./js/certutil");
 var httputil = require("./js/httputil");
 
-var conf = JSON.parse(fs.readFileSync("conf.json"));
-mkdirp.sync(conf.conf_dir);
+var conf = JSON.parse(fs.readFileSync(confpath+"/conf.json"));
 
-var sites = pathlib.join(conf.conf_dir, "sites");
+var sites = confpath+"/sites";
 mkdirp.sync(sites);
 
 function add(path, obj) {

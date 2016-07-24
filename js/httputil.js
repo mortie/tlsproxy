@@ -12,7 +12,7 @@ function parseUrl(req, res, url) {
 }
 
 var actions = {
-	"redirect": function(req, res, action) {
+	redirect: function(req, res, action) {
 		if (action.to === undefined) {
 			res.writeHead(500);
 			return res.end("Option 'to' not provided");
@@ -29,7 +29,7 @@ var actions = {
 		res.end("Redirecting to "+to);
 	},
 
-	"proxy": function(req, res, action) {
+	proxy: function(req, res, action) {
 		if (action.to === undefined) {
 			res.writeHead(500);
 			return res.end("Option 'to' not provided");
@@ -74,7 +74,7 @@ var actions = {
 		});
 	},
 
-	"none": function() {}
+	none: function() {}
 }
 
 function Server(conf, port, protocol) {

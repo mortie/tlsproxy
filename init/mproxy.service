@@ -1,0 +1,8 @@
+[Service]
+ExecStart=/usr/bin/mproxyd
+StandardOutput=syslog
+SyslogIdentifier=mproxyd
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
