@@ -21,6 +21,16 @@ function add(path, obj) {
 		throw "Expected object, got "+(typeof obj)+" at "+path;
 
 	var host = obj.host;
+
+	// Allow multiple hosts
+	if (host instanceof Array) {
+		host.forEach(function(h) {
+			obj.host = h;
+			add(path, obj);
+		});
+		return;
+	}
+
 	var action = obj.action;
 
 	var missing = [];

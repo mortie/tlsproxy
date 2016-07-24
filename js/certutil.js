@@ -38,7 +38,6 @@ var acmeResponders = {};
 
 function acmeResponder(cb) {
 	return function(req, res) {
-		console.log(req.url);
 		if (req.url.indexOf(acmePath) === 0) {
 			var domain = req.headers.host;
 			var responder = acmeResponders[domain];
