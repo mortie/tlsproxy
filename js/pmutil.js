@@ -5,31 +5,63 @@ exports.run = run;
 var processes = [];
 var restartLimit = 10;
 
-function exec(dir, cmd, env) {
-	return childProcess.exec(cmd, {
-		env: env
-	});
+function format(id, cmd, msg) {
+	return "process "+id+" ("+cmd+"): "+msg;
 }
 
-function run(dir, cmd, env) {
+function exec(id, dir, cmd, env, gid, uid) {
+	var proc = childProcess.exec(cmd, {
+		env: env,
+		cwd: dir,
+		uid: uid,
+		gid: gid
+	});
+	proc.running = true;
+	processes[id] = proc;
+
+	proc.stdout.on("data", d => {
+		d = d.toString();
+		d.split("\n").forEach(line => {
+			if (line.trim() === "")
+				return;
+
+			console.log(format(id, cmd, line));
+		});
+	});
+	proc.stderr.on("data", d => {
+		d = d.toString();
+		d.split("\n").forEach(line => {
+			if (line.trim() === "")
+				return;
+
+			console.error(format(id, cmd, "stderr: "+line));
+		});
+	});
+
+	return proc;
+}
+
+function run(dir, cmd, env, gid, uid) {
 	var id = processes.length;
 
-	var proc = exec(dir, cmd, env);
-	processes[id] = proc;
+	var proc = exec(id, dir, cmd, env, gid, uid);
 
 	var restarts = 0;
 	var restartsResetTimeout;
 
 	function onexit(code) {
-		console.error(
-			"process "+id+" ("+cmd+"): trying to restart "+
-			"after exit with code "+code);
+		if (!proc.running)
+			return;
+
+		console.error(format(id, cmd, 
+			"trying to restart "+
+			"after exit with code "+code));
 
 		restarts += 1;
 		if (restarts >= restartLimit) {
-			console.error(
+			console.error(format(id, cmd,
 				"process "+id+" ("+cmd+"): not restarting anymore after "+
-				restarts+" restarts.");
+				restarts+" restarts."));
 			proc.running = false;
 			return;
 		}
@@ -43,10 +75,19 @@ function run(dir, cmd, env) {
 			restarts = 0;
 		}, 5000);
 
-		proc = exec(dir, cmd, env);
-		processes[id] = proc;
+		proc = exec(id, dir, cmd, env, gid, uid);
 		proc.on("exit", onexit);
 	}
 
 	proc.on("exit", onexit);
 }
+
+process.on("exit", () => {
+	processes.forEach(proc => {
+		if (!proc || !proc.running)
+			return;
+
+		proc.running = false;
+		proc.kill();
+	});
+});

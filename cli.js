@@ -4,6 +4,9 @@ var confpath = process.env.PROXY_CONF;
 if (!confpath)
 	confpath = "/etc/mproxy";
 
+var defaultGroup = "www-data";
+var defaultUser = "www-data";
+
 var fs = require("fs");
 var mkdirp = require("mkdirp");
 
@@ -38,7 +41,9 @@ var cmds = {
 		// Default config
 		if (!fileExists(confpath+"/conf.json")) {
 			fs.writeFileSync(confpath+"/conf.json", JSON.stringify({
-				email: "example@example.com"
+				email: "example@example.com",
+				group: defaultGroup,
+				user: defaultUser
 			}, null, 4));
 			console.log(confpath+"/conf.json created. Please edit.");
 		}

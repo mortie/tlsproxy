@@ -8,6 +8,7 @@ var fs = require("fs");
 var pathlib = require("path");
 var urllib = require("url");
 var mkdirp = require("mkdirp");
+var userid = require("userid");
 var certutil = require("./js/certutil");
 var httputil = require("./js/httputil");
 var pmutil = require("./js/pmutil");
@@ -78,8 +79,45 @@ function add(path, obj) {
 			[exec.at, "exec.at"],
 			[exec.run, "exec.run"]]);
 
-		var env = exec.env;
-		pmutil.run(exec.at, exec.run, env);
+		// Add PORT env variable if proxy
+		var env = exec.env || {};
+		if (
+				env.PORT === undefined &&
+				obj.action !== undefined &&
+				obj.action.type === "proxy") {
+
+			var port = urllib.parse(obj.action.to).port;
+			if (port)
+				env.PORT = port;
+		}
+
+		// get GID and UID
+		var user, group;
+		var gid, uid;
+		try {
+			if (exec.group)
+				group = exec.group;
+			else
+				group = conf.group;
+
+			if (exec.user)
+				user = exec.user;
+			else
+				user = conf.user;
+
+			gid = userid.gid(group);
+			uid = userid.uid(user);
+		} catch (err) {
+			console.error(
+				err.toString()+" with user "+
+				user+", group "+group+" at "+path);
+
+			gid = null;
+			uid = null;
+		}
+
+		if (gid !== null && uid !== null)
+			pmutil.run(exec.at, exec.run, env, gid, uid);
 	}
 }
 
