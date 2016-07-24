@@ -13,7 +13,7 @@ function register(conf, domain) {
 	var lex = Lex.create({
 		webrootPath: acmePath,
 		configDir: pathlib.join(conf.conf_dir, "letsencrypt"),
-		approveRegistration: function(hostname, approve) {
+		approveRegistration: (hostname, approve) => {
 			if (hostname === domain) {
 				approve(null, {
 					domains: [domain],

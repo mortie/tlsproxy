@@ -10,36 +10,29 @@ var urllib = require("url");
 var mkdirp = require("mkdirp");
 var certutil = require("./js/certutil");
 var httputil = require("./js/httputil");
+var pmutil = require("./js/pmutil");
 
 var conf = JSON.parse(fs.readFileSync(confpath+"/conf.json"));
 
 var sites = confpath+"/sites";
 mkdirp.sync(sites);
 
-function add(path, obj) {
-	if (typeof obj !== "object")
-		throw "Expected object, got "+(typeof obj)+" at "+path;
-
-	var host = obj.host;
-
-	// Allow multiple hosts
-	if (host instanceof Array) {
-		host.forEach(function(h) {
-			obj.host = h;
-			add(path, obj);
-		});
-		return;
-	}
-
-	var action = obj.action;
-
+function throwIfMissing(path, arr) {
 	var missing = [];
-	if (host === undefined)
-		missing.push("host");
-	if (action === undefined)
-		missing.push("action");
+
+	arr.forEach(elem => {
+		if (elem[0] === undefined || elem[0] === null)
+			missing.push(elem[1]);
+	});
+
 	if (missing.length > 0)
 		throw "Missing keys "+missing.join(", ")+" at "+path;
+}
+
+function addAction(path, host, action) {
+	throwIfMissing(path, [
+		[host, "host"],
+		[action, "action"]]);
 
 	var url = urllib.parse(host);
 
@@ -62,7 +55,35 @@ function add(path, obj) {
 	}
 }
 
-fs.readdirSync(sites).forEach(function(file) {
+function add(path, obj) {
+	if (typeof obj !== "object")
+		throw "Expected object, got "+(typeof obj)+" at "+path;
+
+	var host = obj.host;
+
+	// Allow multiple hosts, or just one host
+	if (host instanceof Array) {
+		host.forEach(h => {
+			obj.host = h;
+			addAction(path, h, obj.action);
+		});
+	} else if (typeof host === "string") {
+		addAction(path, h, obj);
+	}
+
+	// Execute command
+	if (typeof obj.exec === "object") {
+		var exec = obj.exec;
+		throwIfMissing(path, [
+			[exec.at, "exec.at"],
+			[exec.run, "exec.run"]]);
+
+		var env = exec.env;
+		pmutil.run(exec.at, exec.run, env);
+	}
+}
+
+fs.readdirSync(sites).forEach(file => {
 	var path = pathlib.join(sites, file);
 
 	var site;

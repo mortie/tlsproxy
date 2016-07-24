@@ -12,6 +12,8 @@ function parseUrl(req, res, url) {
 }
 
 var actions = {
+
+	// Redirect to action.to
 	redirect: function(req, res, action) {
 		if (action.to === undefined) {
 			res.writeHead(500);
@@ -29,6 +31,7 @@ var actions = {
 		res.end("Redirecting to "+to);
 	},
 
+	// Proxy to action.to
 	proxy: function(req, res, action) {
 		if (action.to === undefined) {
 			res.writeHead(500);
@@ -68,7 +71,7 @@ var actions = {
 			.on("data", d => preq.write(d))
 			.on("end", () => preq.end());
 
-		preq.on("error", function(err) {
+		preq.on("error", err => {
 			res.writeHead(502);
 			res.end(err.toString());
 		});
@@ -92,6 +95,7 @@ function Server(conf, port, protocol) {
 		actions[action.type](req, res, action);
 	}
 
+	// Create http/https server
 	var srv;
 	if (protocol === "https:") {
 		var opts = {
@@ -104,6 +108,7 @@ function Server(conf, port, protocol) {
 		throw "Unknown protocol: "+protocol;
 	}
 
+	// Listen
 	srv.listen(port);
 	console.log(protocol+" listening on port "+port);
 
@@ -124,12 +129,15 @@ function Server(conf, port, protocol) {
 var servers = {};
 
 function host(conf, domain, port, protocol, action) {
+
+	// Get or create server for port
 	var srv = servers[port];
 	if (srv == undefined) {
 		srv = Server(conf, port, protocol);
 		servers[port] = srv;
 	}
 
+	// Add the domain to server
 	srv.addDomain(domain, action);
 
 	// Need an HTTP server for letsencrypt
