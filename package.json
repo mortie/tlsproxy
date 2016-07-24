@@ -14,6 +14,10 @@
     "mkdirp": "^0.5.1",
     "userid": "^0.2.0"
   },
+  "repository": [
+    "type": "git",
+    "url": "https://github.com/mortie/mproxy"
+  },
   "bin": {
     "mproxy": "./cli.js",
     "mproxyd": "./daemon.js"
