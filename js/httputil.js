@@ -72,7 +72,9 @@ var actions = {
 			res.writeHead(502);
 			res.end(err.toString());
 		});
-	}
+	},
+
+	"none": function() {}
 }
 
 function Server(conf, port, protocol) {
@@ -97,7 +99,7 @@ function Server(conf, port, protocol) {
 		};
 		srv = https.createServer(opts, certutil.acmeResponder(onRequest));
 	} else if (protocol === "http:") {
-		srv = http.createServer(onRequest);
+		srv = http.createServer(certutil.acmeResponder(onRequest));
 	} else {
 		throw "Unknown protocol: "+protocol;
 	}
@@ -129,4 +131,9 @@ function host(conf, domain, port, protocol, action) {
 	}
 
 	srv.addDomain(domain, action);
+
+	// Need an HTTP server for letsencrypt
+	if (servers[80] == undefined) {
+		servers[80] = Server(conf, 80, "http:");
+	}
 }

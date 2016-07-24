@@ -1,7 +1,7 @@
 var pathlib = require("path");
 var Lex = require("letsencrypt-express");
 
-var acmePath = "/tmp/.well_known/acme-challenge";
+var acmePath = "/.well-known/acme-challenge";
 
 var lexes = {};
 
@@ -34,8 +34,22 @@ function sniCallback(domain, cb) {
 		cb(true);
 }
 
+var acmeResponders = {};
+
 function acmeResponder(cb) {
 	return function(req, res) {
-		console.log(req.host, req.url);
+		console.log(req.url);
+		if (req.url.indexOf(acmePath) === 0) {
+			var domain = req.headers.host;
+			var responder = acmeResponders[domain];
+			if (!responder) {
+				responder = Lex.createAcmeResponder(lexes[domain], function() {});
+				acmeResponders[domain] = responder;
+			}
+
+			responder(req, res);
+		} else {
+			cb(req, res);
+		}
 	}
 }
