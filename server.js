@@ -40,8 +40,9 @@ function add(path, obj) {
 	}
 
 	try {
-		httputil.host(domain, port, protocol, action);
+		httputil.host(conf, domain, port, protocol, action);
 	} catch (err) {
+		console.trace(err);
 		throw err.toString()+" at "+path;
 	}
 }

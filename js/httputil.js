@@ -75,7 +75,7 @@ var actions = {
 	}
 }
 
-function Server(port, protocol) {
+function Server(conf, port, protocol) {
 	var self = {};
 
 	var domains = {};
@@ -93,8 +93,9 @@ function Server(port, protocol) {
 	var srv;
 	if (protocol === "https:") {
 		var opts = {
-		}
-		srv = https.createServer(opts, onRequest);
+			SNICallback: certutil.sniCallback
+		};
+		srv = https.createServer(opts, certutil.acmeResponder(onRequest));
 	} else if (protocol === "http:") {
 		srv = http.createServer(onRequest);
 	} else {
@@ -109,6 +110,10 @@ function Server(port, protocol) {
 			throw "Unknown action type: "+action.type+" for "+domain;
 
 		domains[domain] = action;
+
+		if (protocol === "https:") {
+			certutil.register(conf, domain);
+		}
 	}
 
 	return self;
@@ -116,10 +121,10 @@ function Server(port, protocol) {
 
 var servers = {};
 
-function host(domain, port, protocol, action) {
+function host(conf, domain, port, protocol, action) {
 	var srv = servers[port];
 	if (srv == undefined) {
-		srv = Server(port, protocol);
+		srv = Server(conf, port, protocol);
 		servers[port] = srv;
 	}
 
