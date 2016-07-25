@@ -1,6 +1,6 @@
 {
   "name": "mproxy",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "",
   "main": "server.js",
   "scripts": {
@@ -19,7 +19,6 @@
     "url": "https://github.com/mortie/mproxy"
   },
   "bin": {
-    "mproxy": "./cli.js",
-    "mproxyd": "./daemon.js"
+    "mproxy": "./cli.js"
   }
 }

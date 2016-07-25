@@ -1,5 +1,5 @@
 [Service]
-ExecStart=/usr/bin/mproxyd
+ExecStart=/usr/bin/env node /opt/mproxy/daemon.js
 StandardOutput=syslog
 SyslogIdentifier=mproxyd
 Environment=NODE_ENV=production

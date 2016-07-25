@@ -39,6 +39,9 @@ var cmds = {
 		mkdirp.sync(confpath);
 		mkdirp.sync(confpath+"/sites");
 
+		mkdirp.sync("/opt/mproxy");
+		fs.symlinkSync(__dirname+"/daemon.js", "/opt/mproxy/daemon.js");
+
 		// Default config
 		if (!fileExists(confpath+"/conf.json")) {
 			fs.writeFileSync(confpath+"/conf.json", JSON.stringify({
