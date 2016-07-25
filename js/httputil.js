@@ -1,6 +1,9 @@
 var http = require("http");
 var https = require("https");
 var urllib = require("url");
+var pathlib = require("path");
+var fs = require("fs");
+var mime = require("mime");
 var certutil = require("../js/certutil");
 
 exports.host = host;
@@ -77,6 +80,31 @@ var actions = {
 		});
 	},
 
+	serve: function(req, res, action) {
+		if (action.path === undefined) {
+			res.writeHead(500);
+			return res.end("Option 'path' not provided");
+		}
+
+		var path = pathlib.join(action.path, req.url);
+		if (path.indexOf(action.path) !== 0) {
+			res.writeHead(403);
+			return res.end("Unauthorized");
+		}
+
+		var index = action.index;
+		if (index === undefined || index === null) {
+			index = ["index.html", "index.htm"];
+		} else if (typeof index === "string") {
+			index = [index];
+		} else {
+			res.writeHead(500);
+			return res.end("Option 'index' is invalid");
+		}
+
+		serve(req, res, path, index);
+	},
+
 	none: function() {}
 }
 
@@ -141,7 +169,87 @@ function host(conf, domain, port, protocol, action) {
 	srv.addDomain(domain, action);
 
 	// Need an HTTP server for letsencrypt
-	if (servers[80] == undefined) {
+	if (servers[80] == undefined && protocol === "https:") {
 		servers[80] = Server(conf, 80, "http:");
 	}
+}
+
+function serveDirectory(req, res, path, index) {
+	// Add / to the end if it doesn't exist already
+	if (path[path.length - 1] !== "/") {
+		res.writeHead(302, {
+			location: path+"/"
+		});
+		res.end("Redirecting to "+path+"/");
+
+	// Serve index
+	} else {
+		var valid = [];
+		var cbs = index.length;
+
+		function accessCb(err, name, i) {
+			if (!err)
+				valid[i] = name;
+
+			cbs -= 1;
+			if (cbs !== 0)
+				return;
+
+			var idx = null;
+			for (var j = 0; j < index.length; ++j) {
+				if (valid[j]) {
+					idx = valid[j];
+					break;
+				}
+			}
+
+			if (idx === null) {
+				res.writeHead(404);
+				res.end("404 not found: "+req.url);
+				return;
+			}
+			serveFile(req, res, pathlib.join(path, idx));
+		}
+
+		index.forEach((name, i) => {
+			fs.access(pathlib.join(path, name), fs.F_OK, err => {
+				accessCb(err, name, i);
+			});
+		});
+	}
+}
+
+function serveFile(req, res, path, index) {
+	res.writeHead(200, {
+		"content-type": mime.lookup(path)
+	});
+
+	fs.createReadStream(path)
+		.on("data", d => res.write(d))
+		.on("end", () => res.end())
+		.on("error", err => res.end(err.toString()));
+}
+
+function serve(req, res, path, index) {
+	fs.stat(path, (err, stat) => {
+		if (err) {
+			if (err.code === "ENOENT") {
+				res.writeHead(404);
+				res.end("404 not found: "+req.url);
+			} else {
+				res.writeHead(500);
+				res.end(err.toString());
+			}
+			return;
+		}
+
+		if (stat.isDirectory()) {
+			serveDirectory(req, res, path, index);
+		} else if (stat.isFile()) {
+			serveFile(req, res, path);
+		} else {
+			res.writeHead(500);
+			res.end("Invalid path requested");
+		}
+	});
 }

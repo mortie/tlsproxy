@@ -1,6 +1,6 @@
 {
   "name": "mproxy",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "",
   "main": "server.js",
   "scripts": {
@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "letsencrypt-express": "^1.1.5",
+    "mime": "^1.3.4",
     "mkdirp": "^0.5.1",
     "userid": "^0.2.0"
   },

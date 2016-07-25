@@ -156,25 +156,24 @@ var ipcServer = net.createServer(conn => {
 		}
 	});
 });
-ipcServer.listen(confpath+"/mproxy.sock");
+ipcServer.listen(confpath+"/mproxy.sock")
+ipcServer.on("error", err => {
+	console.log(err.toString());
+	console.log("Another instance of mproxy may be running.");
+	console.log("If no other instance is running, delete "+confpath+"/mproxy.sock");
+	console.log("and try again.");
+	process.exit(1);
+});
 
-function onTerm(code) {
+function onTerm() {
 	var cbs = 2;
 	ipcServer.close(() => { cbs -= 1; if (cbs === 0) exit(); });
 	pmutil.cleanup(() => { cbs -= 1; if (cbs === 0) exit(); });
 
 	function exit() {
-		process.exit(code || 0);
+		process.exit(1);
 	}
 }
 
-
-process.on("exit", code => {
-	try {
-		fs.unlinkSync(confpath+"/mproxy.sock");
-	} catch (err) {}
-	process.exit(code);
-});
-
-process.on("SIGTERM", () => onTerm());
-process.on("SIGINT", () => onTerm());
+process.on("SIGTERM", onTerm);
+process.on("SIGINT", onTerm);

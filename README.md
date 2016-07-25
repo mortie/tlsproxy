@@ -58,6 +58,18 @@ just because we used `https` in the host field.
 		}
 	]
 
+### Other Example
+
+Here's an example of just serving files in a directory.
+
+	{
+		"host": "https://static.example.com",
+		"action": {
+			"type": "serve",
+			"path": "/var/www/static.example.com/public"
+		}
+	}
+
 ### Properties
 
 Here's a list of the properties a site object can have.
@@ -72,7 +84,10 @@ Here's a list of the properties a site object can have.
 * `action`:
 	* The action to be performed when someone requests the site.
 	* `type`: Can be either "proxy" or "redirect".
-	* `to`: The host to proxy/redirect to.
+	* `to`: (if `type` is "redirect" or "proxy"):
+		* The host to proxy/redirect to.
+	* `path`: (if `type` is "serve"):
+		* The path to serve files in.
 	* `code` (if `type` is "redirect"):
 		* The status code to be sent to the client.
 		* Defaults to 302 (temporary redirect).

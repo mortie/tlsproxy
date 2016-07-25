@@ -113,4 +113,7 @@ function cleanup(cb) {
 				cb();
 		});
 	});
+
+	if (cbs === 0)
+		cb();
 }
