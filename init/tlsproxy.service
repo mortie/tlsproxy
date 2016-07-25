@@ -1,5 +1,5 @@
 [Service]
-ExecStart=/usr/bin/env node /opt/mproxy/daemon.js
+ExecStart=/usr/bin/env node /opt/tlsproxy/daemon.js
 StandardOutput=syslog
 SyslogIdentifier=tlsproxy
 Environment=NODE_ENV=production
