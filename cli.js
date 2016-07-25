@@ -37,6 +37,7 @@ var cmds = {
 			return console.log("setup only supports Linux.");
 
 		mkdirp.sync(confpath);
+		mkdirp.sync(confpath+"/sites");
 
 		// Default config
 		if (!fileExists(confpath+"/conf.json")) {

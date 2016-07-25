@@ -14,6 +14,7 @@ var httputil = require("./js/httputil");
 var pmutil = require("./js/pmutil");
 
 var conf = JSON.parse(fs.readFileSync(confpath+"/conf.json"));
+conf.confpath = confpath;
 
 var sites = confpath+"/sites";
 mkdirp.sync(sites);
@@ -69,7 +70,7 @@ function add(path, obj) {
 			addAction(path, h, obj.action);
 		});
 	} else if (typeof host === "string") {
-		addAction(path, h, obj);
+		addAction(path, host, obj.action);
 	}
 
 	// Execute command

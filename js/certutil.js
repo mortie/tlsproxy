@@ -12,7 +12,7 @@ exports.acmeResponder = acmeResponder;
 function register(conf, domain) {
 	var lex = Lex.create({
 		webrootPath: acmePath,
-		configDir: pathlib.join(conf.conf_dir, "letsencrypt"),
+		configDir: pathlib.join(conf.confpath, "letsencrypt"),
 		approveRegistration: (hostname, approve) => {
 			if (hostname === domain) {
 				approve(null, {
