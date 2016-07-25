@@ -7,6 +7,7 @@ if (!confpath)
 var fs = require("fs");
 var pathlib = require("path");
 var urllib = require("url");
+var net = require("net");
 var mkdirp = require("mkdirp");
 var userid = require("userid");
 var certutil = require("./js/certutil");
@@ -60,6 +61,9 @@ function addAction(path, host, action) {
 function add(path, obj) {
 	if (typeof obj !== "object")
 		throw "Expected object, got "+(typeof obj)+" at "+path;
+
+	if (obj.disabled)
+		return;
 
 	var host = obj.host;
 
@@ -122,6 +126,7 @@ function add(path, obj) {
 	}
 }
 
+// Go through site files and add them
 fs.readdirSync(sites).forEach(file => {
 	var path = pathlib.join(sites, file);
 
@@ -139,3 +144,37 @@ fs.readdirSync(sites).forEach(file => {
 	else
 		throw "Expected array or object, got "+(typeof site)+" at "+path;
 });
+
+var ipcServer = net.createServer(conn => {
+	conn.on("data", d => {
+		switch (d.toString()) {
+		case "proc-list":
+			conn.write(JSON.stringify(pmutil.proclist()));
+			break;
+		default:
+			conn.write("{}");
+		}
+	});
+});
+ipcServer.listen(confpath+"/mproxy.sock");
+
+function onTerm(code) {
+	var cbs = 2;
+	ipcServer.close(() => { cbs -= 1; if (cbs === 0) exit(); });
+	pmutil.cleanup(() => { cbs -= 1; if (cbs === 0) exit(); });
+
+	function exit() {
+		process.exit(code || 0);
+	}
+}
+
+
+process.on("exit", code => {
+	try {
+		fs.unlinkSync(confpath+"/mproxy.sock");
+	} catch (err) {}
+	process.exit(code);
+});
+
+process.on("SIGTERM", () => onTerm());
+process.on("SIGINT", () => onTerm());

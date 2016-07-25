@@ -1,6 +1,8 @@
 var childProcess = require("child_process");
 
 exports.run = run;
+exports.proclist = proclist;
+exports.cleanup = cleanup;
 
 var processes = [];
 var restartLimit = 10;
@@ -17,6 +19,8 @@ function exec(id, dir, cmd, env, gid, uid) {
 		gid: gid
 	});
 	proc.running = true;
+	proc.id = id;
+	proc.cmd = cmd;
 	processes[id] = proc;
 
 	proc.stdout.on("data", d => {
@@ -82,12 +86,31 @@ function run(dir, cmd, env, gid, uid) {
 	proc.on("exit", onexit);
 }
 
-process.on("exit", () => {
+function proclist() {
+	var res = [];
 	processes.forEach(proc => {
+		res.push({
+			id: proc.id,
+			cmd: proc.cmd,
+			running: proc.running
+		});
+	});
+	return res;
+}
+
+function cleanup(cb) {
+	var cbs = 0;
+	processes.forEach(proc => {
+		cbs += 1;
+
 		if (!proc || !proc.running)
 			return;
 
 		proc.running = false;
-		proc.kill();
+		proc.kill(() => {
+			cbs -= 1;
+			if (cbs === 0)
+				cb();
+		});
 	});
-});
+}
