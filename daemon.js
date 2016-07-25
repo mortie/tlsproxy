@@ -2,7 +2,7 @@
 
 var confpath = process.env.PROXY_CONF;
 if (!confpath)
-	confpath = "/etc/mproxy";
+	confpath = "/etc/tlsproxy";
 
 var fs = require("fs");
 var pathlib = require("path");
@@ -156,11 +156,11 @@ var ipcServer = net.createServer(conn => {
 		}
 	});
 });
-ipcServer.listen(confpath+"/mproxy.sock")
+ipcServer.listen(confpath+"/tlsproxy.sock")
 ipcServer.on("error", err => {
 	console.log(err.toString());
-	console.log("Another instance of mproxy may be running.");
-	console.log("If no other instance is running, delete "+confpath+"/mproxy.sock");
+	console.log("Another instance of tlsproxy may be running.");
+	console.log("If no other instance is running, delete "+confpath+"/tlsproxy.sock");
 	console.log("and try again.");
 	process.exit(1);
 });

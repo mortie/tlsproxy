@@ -1,5 +1,5 @@
 {
-  "name": "mproxy",
+  "name": "tlsproxy",
   "version": "1.4.0",
   "description": "",
   "main": "server.js",
@@ -17,9 +17,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/mortie/mproxy"
+    "url": "https://github.com/mortie/tlsproxy"
   },
   "bin": {
-    "mproxy": "./cli.js"
+    "tlsproxy": "./cli.js"
   }
 }

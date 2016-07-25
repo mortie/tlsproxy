@@ -1,7 +1,7 @@
 [Service]
 ExecStart=/usr/bin/env node /opt/mproxy/daemon.js
 StandardOutput=syslog
-SyslogIdentifier=mproxyd
+SyslogIdentifier=tlsproxy
 Environment=NODE_ENV=production
 
 [Install]

@@ -2,7 +2,7 @@
 
 var confpath = process.env.PROXY_CONF;
 if (!confpath)
-	confpath = "/etc/mproxy";
+	confpath = "/etc/tlsproxy";
 
 var defaultGroup = "www-data";
 var defaultUser = "www-data";
@@ -26,26 +26,27 @@ function fileExists(path) {
 }
 
 function ipcConn() {
-	return net.createConnection(confpath+"/mproxy.sock");
+	return net.createConnection(confpath+"/tlsproxy.sock");
 }
 
 var cmds = {
 	"help": function() {
 		console.log("Usage: "+process.argv[1]+" <command>");
 		console.log("commands:");
-		console.log("\thelp:  show this help text");
-		console.log("\tsetup: set up init scripts and conf file");
+		console.log("\thelp:      show this help text");
+		console.log("\tsetup:     set up init scripts and conf file");
+		console.log("\tproc-list: list processes managed by tlsproxy");
 	},
 
 	"setup": function() {
 		if (process.platform !== "linux")
-			return console.log("setup only supports Linux.");
+			return console.log("Setup only supports Linux.");
 
 		mkdirp.sync(confpath);
 		mkdirp.sync(confpath+"/sites");
 
-		mkdirp.sync("/opt/mproxy");
-		fs.symlinkSync(__dirname+"/daemon.js", "/opt/mproxy/daemon.js");
+		mkdirp.sync("/opt/tlsproxy");
+		fs.symlinkSync(__dirname+"/daemon.js", "/opt/tlsproxy/daemon.js");
 
 		// Default config
 		if (!fileExists(confpath+"/conf.json")) {
@@ -62,13 +63,13 @@ var cmds = {
 		// systemd
 		if (initpath.indexOf("systemd") != -1) {
 			copy(
-				__dirname+"/init/mproxy.service",
-				"/etc/systemd/system/mproxy.service");
-			console.log("mproxy installed.");
-			console.log("Enable with 'systemctl enable mproxy',");
-			console.log("then start with 'systemctl start mproxy'");
+				__dirname+"/init/tlsproxy.service",
+				"/etc/systemd/system/tlsproxy.service");
+			console.log("tlsproxy installed.");
+			console.log("Enable with 'systemctl enable tlsproxy',");
+			console.log("then start with 'systemctl start tlsproxy'");
 		} else {
-			console.log("setupInit only supports systemd.");
+			console.log("Systemd not detected, no unit file will be installed.")
 		}
 	},
 

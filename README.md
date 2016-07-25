@@ -1,24 +1,24 @@
-# mproxy
+# tlsproxy
 
-mproxy is mainly a reverse proxy server, meant to be the process listening to
+tlsproxy is mainly a reverse proxy server, meant to be the process listening to
 port 80, 443, etc, and forwarding the requests to internal ports. It also
 features automatic HTTPS certificates using letsencrypt.
 
 ## Usage
 
-First, install mproxy:
+First, install tlsproxy:
 
-	sudo npm install -g mproxy
+	sudo npm install -g tlsproxy
 
-Next step is to create the necessary files in `/etc/mproxy` and install systemd
+Next step is to create the necessary files in `/etc/tlsproxy` and install systemd
 unit files. That's just one command:
 
-	sudo mproxy setup
+	sudo tlsproxy setup
 
-If you're not using systemd, you'll have to find a way to start mproxy on boot
+If you're not using systemd, you'll have to find a way to start tlsproxy on boot
 yourself.
 
-Next, edit `/etc/mproxy/conf.json`. The `email` field is the email used for
+Next, edit `/etc/tlsproxy/conf.json`. The `email` field is the email used for
 letsencrypt certificates. The `user` and `group` fields are the default user
 and group for running processes.
 
@@ -27,7 +27,7 @@ create the user and group `www-data` if it doesn't exist already.
 
 ## Configuration
 
-Configuration is done with json files in `/etc/mproxy/sites`. All files there
+Configuration is done with json files in `/etc/tlsproxy/sites`. All files there
 are automatically sourced. The root of a file could either be an object, or it
 could be an array containing multiple site objects.
 
@@ -92,7 +92,7 @@ Here's a list of the properties a site object can have.
 		* The status code to be sent to the client.
 		* Defaults to 302 (temporary redirect).
 * `exec`:
-	* Execute a process, to let mproxy start the servers it's a proxy
+	* Execute a process, to let tlsproxy start the servers it's a proxy
 	  for if that's desired.
 	* The process is automatically restarted if it dies, unless it dies
 	  immediately after being started multiple times.
@@ -100,7 +100,7 @@ Here's a list of the properties a site object can have.
 	* `run`: The command to be executed, interpreted by `/bin/sh`.
 	* `group`:
 		* The group to execute the process as.
-		* Defaults to `group` in `/etc/mproxy/conf.json`.
+		* Defaults to `group` in `/etc/tlsproxy/conf.json`.
 	* `user`:
 		* The user to execute the process as.
-		* Defaults to `user` in `/etc/mproxy/conf.json`.
+		* Defaults to `user` in `/etc/tlsproxy/conf.json`.
