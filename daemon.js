@@ -93,7 +93,7 @@ function add(path, obj) {
 
 		var action = {
 			type: "redirect",
-			to: host[i]
+			to: host[i]+"/$path"
 		};
 
 		addAction(path, r, action);
