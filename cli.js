@@ -46,8 +46,8 @@ var cmds = {
 		mkdirp.sync(confpath+"/sites");
 
 		mkdirp.sync("/opt/tlsproxy");
-		if (fileExists("/opt/tlsproxy/daemon.js"))
-			fs.unlinkSync("/opt/tslproxy/daemon.js);
+		if (fileExists ("/opt/tlsproxy/daemon.js"))
+			fs.unlinkSync("/opt/tlsproxy/daemon.js");
 		fs.symlinkSync(__dirname+"/daemon.js", "/opt/tlsproxy/daemon.js");
 
 		// Default config
@@ -93,9 +93,8 @@ var cmds = {
 			console.log("Processes:");
 			obj.forEach(proc => {
 				console.log(
-					"id: "+proc.id+", "+
-					"running: "+proc.running+", "+
-					"name: "+proc.name);
+					"name: "+proc.name+", "+
+					"running: "+proc.running);
 			});
 			process.exit();
 		});

@@ -4,34 +4,39 @@ exports.run = run;
 exports.proclist = proclist;
 exports.cleanup = cleanup;
 
-var processes = [];
+var processes = {};
 var restartLimit = 10;
 
 function format(proc, msg) {
-	return "process "+proc.id+" ("+proc.name+"): "+msg;
+	return "process "+proc.id+": "+msg;
+}
+
+function makeid(options) {
+	var id = "'"+options.cmd+"'";
+	id += " at "+options.dir;
+	if (typeof options.host === "string")
+		id += " for "+options.host;
+	else if (options.host instanceof Array && options.host[0])
+		id += " for "+options.host[0];
+
+	return id;
+}
+
+function makename(options) {
+	return options.name || makeid(options);
 }
 
 function exec(options, id) {
-	var proc = childProcess.exec(cmd, {
+	var proc = childProcess.exec(options.cmd, {
 		env: options.env,
 		cwd: options.dir,
 		uid: options.uid,
 		gid: options.gid
 	});
 	proc.running = true;
+	proc.name = makename(options);
 	proc.id = id;
-	proc.cmd = cmd;
-	if (typeof options.name === "string") {
-		proc.name = options.name;
-	} else {
-		proc.name = "'"+options.cmd+"'";
-		proc.name += " at "+options.dir;
-		if (typeof options.host === "string")
-			proc.name += " for "+options.host;
-		else if (options.host instanceof Array && options.host[0])
-			proc.name += " for "+options.host[0];
-	}
-	processes[options.id] = proc;
+	processes[id] = proc;
 
 	proc.stdout.on("data", d => {
 		d = d.toString();
@@ -48,7 +53,7 @@ function exec(options, id) {
 			if (line.trim() === "")
 				return;
 
-			console.error(proc, "stderr: "+line));
+			console.error(format(proc, "stderr: "+line));
 		});
 	});
 
@@ -56,7 +61,12 @@ function exec(options, id) {
 }
 
 function run(options) {
-	var id = processes.length;
+	var id = makeid(options);
+	if (processes[id])
+		return console.log("Not starting process "+id+" because it already exists.");
+
+	console.log(processes);
+	console.log("Starting process "+id);
 
 	var proc = exec(options, id);
 
@@ -97,22 +107,29 @@ function run(options) {
 
 function proclist() {
 	var res = [];
-	processes.forEach(proc => {
+	for (var i in processes) {
+		if (!processes.hasOwnProperty(i))
+			continue;
+
+		var proc = processes[i];
 		res.push({
-			id: proc.id,
 			name: proc.name,
 			running: proc.running
 		});
-	});
+	}
 	return res;
 }
 
 function cleanup() {
-	processes.forEach(proc => {
+	for (var i in processes) {
+		if (!processes.hasOwnProperty(i))
+			continue;
+
+		var proc = processes[i];
 		if (!proc || !proc.running)
 			return;
 
 		proc.running = false;
 		proc.kill("SIGTERM");
-	});
+	}
 }
