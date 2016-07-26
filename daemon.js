@@ -17,6 +17,9 @@ var pmutil = require("./js/pmutil");
 var conf = JSON.parse(fs.readFileSync(confpath+"/conf.json"));
 conf.confpath = confpath;
 
+if (conf.testing)
+	console.log("Testing mode enabled.");
+
 var sites = confpath+"/sites";
 mkdirp.sync(sites);
 

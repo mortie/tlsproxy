@@ -9,7 +9,14 @@ exports.register = register;
 exports.sniCallback = sniCallback;
 exports.acmeResponder = acmeResponder;
 
+var testing = false;
+
 function register(conf, domain) {
+	if (conf.testing && !testing) {
+		testing = true;
+		Lex = Lex.testing();
+	}
+
 	var lex = Lex.create({
 		webrootPath: acmePath,
 		configDir: pathlib.join(conf.confpath, "letsencrypt"),
