@@ -188,13 +188,10 @@ ipcServer.on("error", err => {
 });
 
 function onTerm() {
-	var cbs = 2;
-	ipcServer.close(() => { cbs -= 1; if (cbs === 0) exit(); });
-	pmutil.cleanup(() => { cbs -= 1; if (cbs === 0) exit(); });
-
-	function exit() {
+	pmutil.cleanup();
+	ipcServer.close(() => {
 		process.exit(1);
-	}
+	});
 }
 
 process.on("SIGTERM", onTerm);

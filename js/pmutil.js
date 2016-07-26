@@ -98,22 +98,12 @@ function proclist() {
 	return res;
 }
 
-function cleanup(cb) {
-	var cbs = 0;
+function cleanup() {
 	processes.forEach(proc => {
-		cbs += 1;
-
 		if (!proc || !proc.running)
 			return;
 
 		proc.running = false;
-		proc.kill(() => {
-			cbs -= 1;
-			if (cbs === 0)
-				cb();
-		});
+		proc.kill("SIGTERM");
 	});
-
-	if (cbs === 0)
-		cb();
 }
