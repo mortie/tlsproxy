@@ -7,21 +7,31 @@ exports.cleanup = cleanup;
 var processes = [];
 var restartLimit = 10;
 
-function format(id, cmd, msg) {
-	return "process "+id+" ("+cmd+"): "+msg;
+function format(proc, msg) {
+	return "process "+proc.id+" ("+proc.name+"): "+msg;
 }
 
-function exec(id, dir, cmd, env, gid, uid) {
+function exec(options, id) {
 	var proc = childProcess.exec(cmd, {
-		env: env,
-		cwd: dir,
-		uid: uid,
-		gid: gid
+		env: options.env,
+		cwd: options.dir,
+		uid: options.uid,
+		gid: options.gid
 	});
 	proc.running = true;
 	proc.id = id;
 	proc.cmd = cmd;
-	processes[id] = proc;
+	if (typeof options.name === "string") {
+		proc.name = options.name;
+	} else {
+		proc.name = "'"+options.cmd+"'";
+		proc.name += " at "+options.dir;
+		if (typeof options.host === "string")
+			proc.name += " for "+options.host;
+		else if (options.host instanceof Array && options.host[0])
+			proc.name += " for "+options.host[0];
+	}
+	processes[options.id] = proc;
 
 	proc.stdout.on("data", d => {
 		d = d.toString();
@@ -29,7 +39,7 @@ function exec(id, dir, cmd, env, gid, uid) {
 			if (line.trim() === "")
 				return;
 
-			console.log(format(id, cmd, line));
+			console.log(format(proc, line));
 		});
 	});
 	proc.stderr.on("data", d => {
@@ -38,17 +48,17 @@ function exec(id, dir, cmd, env, gid, uid) {
 			if (line.trim() === "")
 				return;
 
-			console.error(format(id, cmd, "stderr: "+line));
+			console.error(proc, "stderr: "+line));
 		});
 	});
 
 	return proc;
 }
 
-function run(dir, cmd, env, gid, uid) {
+function run(options) {
 	var id = processes.length;
 
-	var proc = exec(id, dir, cmd, env, gid, uid);
+	var proc = exec(options, id);
 
 	var restarts = 0;
 	var restartsResetTimeout;
@@ -57,14 +67,13 @@ function run(dir, cmd, env, gid, uid) {
 		if (!proc.running)
 			return;
 
-		console.error(format(id, cmd, 
-			"trying to restart "+
-			"after exit with code "+code));
+		console.error(format(proc,
+			"Restarting after exit with code "+code));
 
 		restarts += 1;
 		if (restarts >= restartLimit) {
-			console.error(format(id, cmd,
-				"process "+id+" ("+cmd+"): not restarting anymore after "+
+			console.error(format(proc,
+				"Not restarting anymore after "+
 				restarts+" restarts."));
 			proc.running = false;
 			return;
@@ -79,7 +88,7 @@ function run(dir, cmd, env, gid, uid) {
 			restarts = 0;
 		}, 5000);
 
-		proc = exec(id, dir, cmd, env, gid, uid);
+		proc = exec(options, id);
 		proc.on("exit", onexit);
 	}
 
@@ -91,7 +100,7 @@ function proclist() {
 	processes.forEach(proc => {
 		res.push({
 			id: proc.id,
-			cmd: proc.cmd,
+			name: proc.name,
 			running: proc.running
 		});
 	});

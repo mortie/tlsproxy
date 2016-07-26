@@ -143,29 +143,41 @@ function add(path, obj) {
 			uid = null;
 		}
 
-		if (gid !== null && uid !== null)
-			pmutil.run(exec.at, exec.run, env, gid, uid);
+		if (gid !== null && uid !== null) {
+			pmutil.run({
+				dir: exec.at,
+				cmd: exec.run,
+				env: env,
+				gid: gid,
+				uid: uid,
+				name: exec.name,
+				host: obj.host
+			});
+		}
 	}
 }
 
 // Go through site files and add them
-fs.readdirSync(sites).forEach(file => {
-	var path = pathlib.join(sites, file);
+function load() {
+	fs.readdirSync(sites).forEach(file => {
+		var path = pathlib.join(sites, file);
 
-	var site;
-	try {
-		site = JSON.parse(fs.readFileSync(path));
-	} catch (err) {
-		throw "Failed to parse "+path+": "+err.toString();
-	}
+		var site;
+		try {
+			site = JSON.parse(fs.readFileSync(path));
+		} catch (err) {
+			throw "Failed to parse "+path+": "+err.toString();
+		}
 
-	if (site instanceof Array)
-		site.forEach(x => add(path, x));
-	else if (typeof site == "object")
-		add(path, site);
-	else
-		throw "Expected array or object, got "+(typeof site)+" at "+path;
-});
+		if (site instanceof Array)
+			site.forEach(x => add(path, x));
+		else if (typeof site == "object")
+			add(path, site);
+		else
+			throw "Expected array or object, got "+(typeof site)+" at "+path;
+	});
+}
+load();
 
 var ipcServer = net.createServer(conn => {
 	conn.on("data", d => {
@@ -173,6 +185,14 @@ var ipcServer = net.createServer(conn => {
 		case "proc-list":
 			conn.write(JSON.stringify(pmutil.proclist()));
 			break;
+
+		case "reload":
+			httputil.cleanup(() => {
+				load();
+				conn.write("{}");
+			});
+			break;
+
 		default:
 			conn.write("{}");
 		}

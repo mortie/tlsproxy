@@ -46,6 +46,8 @@ var cmds = {
 		mkdirp.sync(confpath+"/sites");
 
 		mkdirp.sync("/opt/tlsproxy");
+		if (fileExists("/opt/tlsproxy/daemon.js"))
+			fs.unlinkSync("/opt/tslproxy/daemon.js);
 		fs.symlinkSync(__dirname+"/daemon.js", "/opt/tlsproxy/daemon.js");
 
 		// Default config
@@ -74,6 +76,15 @@ var cmds = {
 		}
 	},
 
+	"reload": function() {
+		var conn = ipcConn();
+		conn.write("reload");
+		conn.once("data", d => {
+			console.log("Reloaded.");
+			process.exit();
+		});
+	},
+
 	"proc-list": function() {
 		var conn = ipcConn();
 		conn.write("proc-list");
@@ -84,7 +95,7 @@ var cmds = {
 				console.log(
 					"id: "+proc.id+", "+
 					"running: "+proc.running+", "+
-					"command: "+proc.cmd);
+					"name: "+proc.name);
 			});
 			process.exit();
 		});

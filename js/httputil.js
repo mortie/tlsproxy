@@ -7,6 +7,7 @@ var mime = require("mime");
 var certutil = require("../js/certutil");
 
 exports.host = host;
+exports.cleanup = cleanup;
 
 function parseUrl(req, res, url) {
 	return url
@@ -114,6 +115,11 @@ function Server(conf, port, protocol) {
 	var domains = {};
 
 	function onRequest(req, res) {
+		if (typeof req.headers.host !== "string") {
+			res.writeHead(400);
+			res.end("No host header!");
+		}
+
 		var domain = req.headers.host.split(":")[0];
 		var action = domains[domain];
 
@@ -151,6 +157,10 @@ function Server(conf, port, protocol) {
 		}
 	}
 
+	self.close = function(cb) {
+		srv.close(cb);
+	}
+
 	return self;
 }
 
@@ -172,6 +182,25 @@ function host(conf, domain, port, protocol, action) {
 	if (servers[80] == undefined && protocol === "https:") {
 		servers[80] = Server(conf, 80, "http:");
 	}
+}
+
+function cleanup(cb) {
+	var cbs = 0;
+
+	for (var i in servers) {
+		if (!servers.hasOwnProperty(i))
+			continue;
+
+		cbs += 1;
+		servers[i].close(() => {
+			cbs -= 1;
+			if (cbs === 0)
+				cb();
+		});
+	}
+
+	if (cbs === 0)
+		cb();
 }
 
 function serveDirectory(req, res, path, index) {
