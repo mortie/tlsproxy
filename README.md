@@ -41,6 +41,17 @@ serves the actual website.
 https will magically work and be updated whenever necessary and everything,
 just because we used `https` in the host field.
 
+	{
+		"host": ["https://example.com", "https://www.example.com"],
+		"redirectFrom": ["http://example.com", "http://www.example.com"],
+		"action": {
+			"type": "proxy",
+			"to": "http://localhost:8085"
+		}
+	}
+
+Here's an example withouut redirectFrom, for completeness' sake:
+
 	[
 		{
 			"host": ["https://example.com", "https://www.example.com"],
@@ -64,6 +75,7 @@ Here's an example of just serving files in a directory.
 
 	{
 		"host": "https://static.example.com",
+		"redirectFrom": "http://static.example.com",
 		"action": {
 			"type": "serve",
 			"path": "/var/www/static.example.com/public"
@@ -81,6 +93,9 @@ Here's a list of the properties a site object can have.
 	* Both `http://` and `https://` are accepted.
 	* Adding a port is optional, and is done by adding `:<port>` to the end.
 	* If no port is provided, 80 will be used for http, and 443 for https.
+* `redirectFrom`:
+	* The host(s) which will redirect to the site.
+	* Follows the same rules as `host`.
 * `action`:
 	* The action to be performed when someone requests the site.
 	* `type`: Can be either "proxy" or "redirect".

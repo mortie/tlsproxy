@@ -66,16 +66,35 @@ function add(path, obj) {
 		return;
 
 	var host = obj.host;
+	if (typeof host === "string")
+		host = [host];
+	else if (!(host instanceof Array))
+		host = [];
 
-	// Allow multiple hosts, or just one host
-	if (host instanceof Array) {
-		host.forEach(h => {
-			obj.host = h;
-			addAction(path, h, obj.action);
-		});
-	} else if (typeof host === "string") {
-		addAction(path, host, obj.action);
-	}
+	// Add action for each host
+	host.forEach(h => {
+		obj.host = h;
+		addAction(path, h, obj.action);
+	});
+
+	var redirectFrom = obj.redirectFrom;
+	if (typeof redirectFrom === "string")
+		redirectFrom = [redirectFrom];
+	else if (!(redirectFrom instanceof Array))
+		redirectFrom = [];
+
+	// Add redirect for each redirectFrom
+	redirectFrom.forEach((r, i) => {
+		if (host[i] === undefined)
+			return;
+
+		var action = {
+			type: "redirect",
+			to: host[i]
+		};
+
+		addAction(path, r, action);
+	});
 
 	// Execute command
 	if (typeof obj.exec === "object") {

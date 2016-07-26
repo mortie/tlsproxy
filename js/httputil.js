@@ -14,6 +14,11 @@ function parseUrl(req, res, url) {
 		.replace(/\$path/g, req.url.substring(1));
 }
 
+function parsePath(req, res, url) {
+	return url
+		.replace(/\$host/g, req.headers.host);
+}
+
 var actions = {
 
 	// Redirect to action.to
@@ -231,6 +236,8 @@ function serveFile(req, res, path, index) {
 }
 
 function serve(req, res, path, index) {
+	path = parsePath(req, res, path);
+
 	fs.stat(path, (err, stat) => {
 		if (err) {
 			if (err.code === "ENOENT") {
