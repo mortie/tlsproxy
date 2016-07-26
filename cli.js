@@ -26,7 +26,16 @@ function fileExists(path) {
 }
 
 function ipcConn() {
-	return net.createConnection(confpath+"/tlsproxy.sock");
+	var conn;
+	try {
+		conn = net.createConnection(confpath+"/tlsproxy.sock");
+	} catch (err) {
+		if (err.code === "ENOENT")
+			throw "tlsproxy is not running!";
+		else
+			throw err;
+	}
+	return conn;
 }
 
 var cmds = {
@@ -34,9 +43,24 @@ var cmds = {
 		console.log("Usage: "+process.argv[1]+" <command>");
 		console.log("commands:");
 		console.log("\thelp:      show this help text");
+		console.log("\tversion:    show the version");
 		console.log("\tsetup:     set up init scripts and conf file");
 		console.log("\tproc-list: list processes managed by tlsproxy");
 	},
+
+	"version": function() {
+		var cliver = JSON.parse(fs.readFileSync(
+			__dirname+"/package.json"), "utf-8").version;
+		var conn = ipcConn();
+		conn.end("version");
+		conn.once("data", d => {
+			var srvver = JSON.parse(d).version;
+			console.log("Client version: "+cliver);
+			console.log("Server version: "+srvver);
+			process.exit();
+		});
+	},
+	"--version": function() { cmds.version(); },
 
 	"setup": function() {
 		if (process.platform !== "linux")
@@ -78,7 +102,7 @@ var cmds = {
 
 	"reload": function() {
 		var conn = ipcConn();
-		conn.write("reload");
+		conn.end("reload");
 		conn.once("data", d => {
 			console.log("Reloaded.");
 			process.exit();
@@ -87,7 +111,7 @@ var cmds = {
 
 	"proc-list": function() {
 		var conn = ipcConn();
-		conn.write("proc-list");
+		conn.end("proc-list");
 		conn.once("data", d => {
 			var obj = JSON.parse(d);
 			console.log("Processes:");

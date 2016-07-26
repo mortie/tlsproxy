@@ -180,21 +180,32 @@ function load() {
 load();
 
 var ipcServer = net.createServer(conn => {
+	function write(obj) {
+		conn.write(JSON.stringify(obj));
+	}
+
 	conn.on("data", d => {
 		switch (d.toString()) {
+		case "version":
+			write({
+				version: JSON.parse(fs.readFileSync(
+					__dirname+"/package.json", "utf-8")).version
+			});
+			break;
+
 		case "proc-list":
-			conn.write(JSON.stringify(pmutil.proclist()));
+			write(pmutil.proclist());
 			break;
 
 		case "reload":
 			httputil.cleanup(() => {
 				load();
-				conn.write("{}");
+				write({});
 			});
 			break;
 
 		default:
-			conn.write("{}");
+			write({});
 		}
 	});
 });
