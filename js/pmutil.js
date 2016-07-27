@@ -65,7 +65,6 @@ function run(options) {
 	if (processes[id])
 		return console.log("Not starting process "+id+" because it already exists.");
 
-	console.log(processes);
 	console.log("Starting process "+id);
 
 	var proc = exec(options, id);

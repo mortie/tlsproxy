@@ -118,6 +118,8 @@ function Server(conf, port, protocol) {
 		if (typeof req.headers.host !== "string") {
 			res.writeHead(400);
 			res.end("No host header!");
+			console.log("Received request with no host header.");
+			return;
 		}
 
 		var domain = req.headers.host.split(":")[0];

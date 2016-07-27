@@ -1,8 +1,8 @@
 # tlsproxy
 
-tlsproxy is mainly a reverse proxy server, meant to be the process listening to
-port 80, 443, etc, and forwarding the requests to internal ports. It also
-features automatic HTTPS certificates using letsencrypt.
+tlsproxy is a web proxy server, meant to be the process listening to
+port 80, 443, etc, and forwarding the requests to internal ports. It can also
+serve a directory. It features automatic HTTPS certificates using letsencrypt.
 
 ## Usage
 
@@ -115,6 +115,7 @@ Here's a list of the properties a site object can have.
 	* `run`: The command to be executed, interpreted by `/bin/sh`.
 	* `name`: The name of the process. If none is given, a name based on the
 	  host, command, and directory.
+	* `env`: Environment variables.
 	* `group`:
 		* The group to execute the process as.
 		* Defaults to `group` in `/etc/tlsproxy/conf.json`.
