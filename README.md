@@ -50,7 +50,7 @@ just because we used `https` in the host field.
 		}
 	}
 
-Here's an example withouut redirectFrom, for completeness' sake:
+Here's an example without redirectFrom, for completeness' sake:
 
 	[
 		{
