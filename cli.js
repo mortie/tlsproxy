@@ -11,6 +11,9 @@ var fs = require("fs");
 var net = require("net");
 var mkdirp = require("mkdirp");
 
+var version = JSON.parse(
+	fs.readFileSync(__dirname+"/package.json", "utf-8")).version;
+
 function copy(p1, p2) {
 	var rs = fs.createWriteStream(p2);
 	fs.createReadStream(p1).pipe(rs);
@@ -49,13 +52,11 @@ var cmds = {
 	},
 
 	"version": function() {
-		var cliver = JSON.parse(fs.readFileSync(
-			__dirname+"/package.json"), "utf-8").version;
 		var conn = ipcConn();
 		conn.end("version");
 		conn.once("data", d => {
 			var srvver = JSON.parse(d).version;
-			console.log("Client version: "+cliver);
+			console.log("Client version: "+version);
 			console.log("Server version: "+srvver);
 			process.exit();
 		});

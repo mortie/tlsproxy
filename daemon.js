@@ -14,6 +14,9 @@ var certutil = require("./js/certutil");
 var httputil = require("./js/httputil");
 var pmutil = require("./js/pmutil");
 
+var version = JSON.parse(
+	fs.readFileSync(__dirname+"/package.json", "utf-8")).version
+
 var conf = JSON.parse(fs.readFileSync(confpath+"/conf.json"));
 conf.confpath = confpath;
 
@@ -188,8 +191,7 @@ var ipcServer = net.createServer(conn => {
 		switch (d.toString()) {
 		case "version":
 			write({
-				version: JSON.parse(fs.readFileSync(
-					__dirname+"/package.json", "utf-8")).version
+				version: version
 			});
 			break;
 
