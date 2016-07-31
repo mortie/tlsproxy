@@ -304,8 +304,8 @@ function serveFile(req, res, path, stat) {
 
 	fs.createReadStream(path, { start: start, end: end })
 		.on("data", d => res.write(d))
-		.on("end", () => { res.end(); console.log("end"); } )
-		.on("error", err => { res.end(err.toString()); console.log(err); });
+		.on("end", () => console.log("end"))
+		.on("error", res.end(err.toString()));
 }
 
 function serve(req, res, path, index) {
