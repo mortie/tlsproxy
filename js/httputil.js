@@ -275,7 +275,7 @@ function serveFile(req, res, path, stat) {
 	else
 		parts = [0];
 
-	var start = Math.min((parts[0] || 0), 0);
+	var start = Math.max((parts[0] || 0), 0);
 	var end;
 	if (parts[1])
 		end = Math.min(parseInt(parts[1]), stat.size - 1);
@@ -283,8 +283,6 @@ function serveFile(req, res, path, stat) {
 		end = stat.size - 1;
 
 	var chunksize = (end - start) + 1;
-
-	console.log(range);
 
 	var headers = {
 		"content-type": mimetype,
@@ -297,7 +295,6 @@ function serveFile(req, res, path, stat) {
 		headers["accept-ranges"] =  "bytes";
 	}
 
-	console.log(range ? 206 : 200, headers);
 	res.writeHead(range ? 206 : 200, headers);
 
 	if (req.method == "HEAD") {
