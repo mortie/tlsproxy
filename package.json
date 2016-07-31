@@ -1,6 +1,6 @@
 {
   "name": "tlsproxy",
-  "version": "1.6.8",
+  "version": "1.6.10",
   "description": "",
   "main": "server.js",
   "scripts": {

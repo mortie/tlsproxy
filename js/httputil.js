@@ -253,7 +253,7 @@ function serveDirectory(req, res, path, index) {
 function serveFile(req, res, path, stat) {
 	if (!stat) {
 		fs.stat(path, (err, stat) => {
-			if (err.code === "ENOENT") {
+			if (err && err.code === "ENOENT") {
 				res.writeHead(404);
 				res.end("404 not found: "+req.url);
 				return;
@@ -305,7 +305,7 @@ function serveFile(req, res, path, stat) {
 	fs.createReadStream(path, { start: start, end: end })
 		.on("data", d => res.write(d))
 		.on("end", () => console.log("end"))
-		.on("error", res.end(err.toString()));
+		.on("error", err => res.end(err.toString()));
 }
 
 function serve(req, res, path, index) {
