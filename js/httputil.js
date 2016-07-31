@@ -250,15 +250,65 @@ function serveDirectory(req, res, path, index) {
 	}
 }
 
-function serveFile(req, res, path, index) {
-	res.writeHead(200, {
-		"content-type": mime.lookup(path)
-	});
+function serveFile(req, res, path, stat) {
+	if (!stat) {
+		fs.stat(path, (err, stat) => {
+			if (err.code === "ENOENT") {
+				res.writeHead(404);
+				res.end("404 not found: "+req.url);
+				return;
+			}
 
-	fs.createReadStream(path)
+			serveFile(req, res, path, stat);
+		});
+		return;
+	}
+
+	var mimetype = mime.lookup(path);
+	var readstream;
+
+	var range = req.headers.range;
+
+	var parts;
+	if (range)
+		parts = range.replace("bytes=", "").split("-");
+	else
+		parts = [0];
+
+	var start = Math.min((parts[0] || 0), 0);
+	var end;
+	if (parts[1])
+		end = Math.min(parseInt(parts[1]), stat.size - 1);
+	else
+		end = stat.size - 1;
+
+	var chunksize = (end - start) + 1;
+
+	console.log(range);
+
+	var headers = {
+		"content-type": mimetype,
+		"content-length": chunksize,
+	};
+	if (range) {
+		headers["content-range"] =
+			"bytes " + start + "-" + end + "/" + stat.size;
+	} else {
+		headers["accept-ranges"] =  "bytes";
+	}
+
+	console.log(range ? 206 : 200, headers);
+	res.writeHead(range ? 206 : 200, headers);
+
+	if (req.method == "HEAD") {
+		res.end();
+		return;
+	}
+
+	fs.createReadStream(path, { start: start, end: end })
 		.on("data", d => res.write(d))
-		.on("end", () => res.end())
-		.on("error", err => res.end(err.toString()));
+		.on("end", () => { res.end(); console.log("end"); } )
+		.on("error", err => { res.end(err.toString()); console.log(err); });
 }
 
 function serve(req, res, path, index) {
@@ -277,7 +327,7 @@ function serve(req, res, path, index) {
 		if (stat.isDirectory()) {
 			serveDirectory(req, res, path, index);
 		} else if (stat.isFile()) {
-			serveFile(req, res, path);
+			serveFile(req, res, path, stat);
 		} else {
 			res.writeHead(500);
 			res.end("Invalid path requested");
