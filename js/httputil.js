@@ -295,6 +295,12 @@ function serveFile(req, res, path, stat) {
 		headers["accept-ranges"] =  "bytes";
 	}
 
+	if (start > end) {
+		res.writeHead(416);
+		res.end("Range not satisfiable. Start: "+start+", end: "+end);
+		return;
+	}
+
 	res.writeHead(range ? 206 : 200, headers);
 
 	if (req.method == "HEAD") {
