@@ -182,6 +182,15 @@ function load() {
 }
 load();
 
+// Remove the 
+try {
+	fs.accessSync(confpath+"/tlsproxy.sock", fs.F_OK);
+	fs.unlinkSync(confpath+"/tlsproxy.sock");
+} catch (err) {
+	if (err.code !== "ENOENT")
+		console.error(err);
+}
+
 var ipcServer = net.createServer(conn => {
 	function write(obj) {
 		conn.write(JSON.stringify(obj));
@@ -213,10 +222,8 @@ var ipcServer = net.createServer(conn => {
 });
 ipcServer.listen(confpath+"/tlsproxy.sock")
 ipcServer.on("error", err => {
-	console.log(err.toString());
-	console.log("Another instance of tlsproxy may be running.");
-	console.log("If no other instance is running, delete "+confpath+"/tlsproxy.sock");
-	console.log("and try again.");
+	console.log("Could not connect to "+confpath+"/tlsproxy.sock:");
+	console.error(err.toString());
 	process.exit(1);
 });
 
