@@ -1,7 +1,8 @@
 var pathlib = require("path");
 var Lex = require("letsencrypt-express");
 
-var acmePath = "/.well-known/acme-challenge";
+var acmePath = "/tmp/acme-challenge";
+var server;
 
 var lexes = {};
 
@@ -9,28 +10,46 @@ exports.register = register;
 exports.sniCallback = sniCallback;
 exports.acmeResponder = acmeResponder;
 
-var testing = false;
-
 function register(conf, domain) {
-	if (conf.testing && !testing) {
-		testing = true;
-		Lex = Lex.testing();
-	}
+	if (conf.testing)
+		server = "https://acme-v01.api.letsencrypt.org/directory";
+	else
+		server = "staging";
 
 	var configDir = pathlib.join(conf.confpath, "letsencrypt");
 	if (conf.testing)
 		configDir += "-testing";
 
 	var lex = Lex.create({
-		webrootPath: acmePath,
 		configDir: configDir,
-		approveRegistration: (hostname, approve) => {
-			if (hostname === domain) {
-				approve(null, {
-					domains: [domain],
-					email: conf.email,
-					agreeTos: true
+
+		server: server,
+
+		challenges: {
+			"http-01": require("le-challenge-fs").create({
+				webrootPath: acmePath
+			})
+		},
+
+		store: require("le-store-certbot").create({
+			webrootPath: acmePath
+		}),
+
+		approveDomains: function(opts, certs, cb) {
+			if (certs) {
+				opts.domains = certs.altnames;
+			} else {
+				opts.email = conf.email;
+				opts.agreeTos = true;
+			}
+
+			if (opts.domain === domain) {
+				cb(null, {
+					options: opts,
+					certs: certs
 				});
+			} else {
+				cb("Domain "+domain+" doesn't match!");
 			}
 		}
 	});

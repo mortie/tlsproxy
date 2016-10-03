@@ -79,7 +79,7 @@ var cmds = {
 		if (!fileExists(confpath+"/conf.json")) {
 			fs.writeFileSync(confpath+"/conf.json", JSON.stringify({
 				email: "example@example.com",
-				testing: false,
+				testing: true,
 				group: defaultGroup,
 				user: defaultUser
 			}, null, 4));
