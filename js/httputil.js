@@ -4,6 +4,8 @@ var urllib = require("url");
 var pathlib = require("path");
 var fs = require("fs");
 var mime = require("mime");
+var WSServer = require("ws").Server;
+var WSClient = require("ws");
 var certutil = require("../js/certutil");
 
 exports.host = host;
@@ -45,7 +47,6 @@ var actions = {
 		var to = parseUrl(req, res, action.to);
 		var url = urllib.parse(to);
 
-		var preq;
 		function onResponse(pres) {
 			res.writeHead(pres.statusCode, pres.headers);
 			pres
@@ -62,6 +63,7 @@ var actions = {
 			headers: req.headers
 		}
 
+		// 
 		if (url.protocol === "https:") {
 			preq = https.request(options, onResponse);
 		} else if (url.protocol === "http:") {
@@ -113,6 +115,7 @@ function Server(conf, port, protocol) {
 	var self = {};
 
 	var domains = {};
+	var wsdomains = {};
 
 	function onRequest(req, res) {
 		if (typeof req.headers.host !== "string") {
@@ -129,6 +132,42 @@ function Server(conf, port, protocol) {
 			return res.end("Unknown host: "+domain);
 
 		actions[action.type](req, res, action);
+	}
+
+	function onWSSocket(sock) {
+		var req = sock.upgradeReq;
+		if (typeof req.headers.host !== "string") {
+			console.log("Received websocket request with no host header.");
+			return;
+		}
+
+		var domain = req.headers.host.split(":")[0];
+		var action = wsdomains[domain];
+
+		if (action === undefined)
+			return console.log("Unknown websocket host: "+domain);
+
+		var psock = new WSClient(action.websocket);
+
+		psock.on("message", msg => {
+			sock.send(msg);
+		});
+		sock.on("message", msg => {
+			psock.send(msg);
+		});
+
+		var sockClosed = false;
+		var psockClosed = false;
+		sock.on("close", (code, msg) => {
+			sockClosed = true;
+			if (!psockClosed)
+				psock.close(code, msg);
+		});
+		psock.on("close", (code, msg) => {
+			psockClosed = true;
+			if (!psockClosed)
+				sock.close(code, msg);
+		});
 	}
 
 	// Create http/https server
@@ -148,11 +187,18 @@ function Server(conf, port, protocol) {
 	srv.listen(port);
 	console.log(protocol+" listening on port "+port);
 
+	// Create websocket server
+	var wssrv = new WSServer({ server: srv });
+	wssrv.on("connection", onWSSocket);
+
 	self.addDomain = function(domain, action) {
 		if (actions[action.type] === undefined)
 			throw "Unknown action type: "+action.type+" for "+domain;
 
 		domains[domain] = action;
+
+		if (action.type === "proxy" && typeof action.websocket === "string")
+			wsdomains[domain] = action;
 
 		if (protocol === "https:") {
 			certutil.register(conf, domain);

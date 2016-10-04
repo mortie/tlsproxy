@@ -101,6 +101,8 @@ Here's a list of the properties a site object can have.
 	* `type`: Can be either "proxy" or "redirect".
 	* `to`: (if `type` is "redirect" or "proxy"):
 		* The host to proxy/redirect to.
+	* `websocket`: (if `type` is `proxy`):
+		* The URL to proxy websockets to.
 	* `path`: (if `type` is "serve"):
 		* The path to serve files in.
 	* `code` (if `type` is "redirect"):
