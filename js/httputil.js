@@ -75,7 +75,7 @@ var actions = {
 
 		req
 			.on("data", d => preq.write(d))
-			.on("end", () => preq.end());
+			.on("end", () => preq.end())
 
 		preq.on("error", err => {
 			res.writeHead(502);
@@ -147,17 +147,15 @@ function Server(conf, port, protocol) {
 		if (action === undefined)
 			return console.log("Unknown websocket host: "+domain);
 
+		var sockOpen = true;
+		var psockOpen = false;
+		var psockQueue = [];
+		var sockClosed = false;
+		var psockClosed = false;
+
 		var psock = new WSClient(action.websocket);
 
-		// Send queed messages when opening
-		var sockOpen = false;
-		var psockOpen = false;
-		var sockQueue = [];
-		var psockQueue = [];
-		sock.on("open", () => {
-			sockOpen = true;
-			sockQueue.forEach(msg => sock.send(msg));
-		});
+		// Send queued messages when opening
 		psock.on("open", () => {
 			psockOpen = true;
 			psockQueue.forEach(msg => psock.send(msg));
@@ -165,21 +163,23 @@ function Server(conf, port, protocol) {
 
 		// Send messages, or queue them up
 		sock.on("message", msg => {
+			if (psockClosed)
+				return;
+
 			if (psockOpen)
 				psock.send(msg);
 			else
 				psockQueue.push(msg);
 		});
 		psock.on("message", msg => {
+			if (sockClosed)
+				return;
+
 			if (sockOpen)
 				sock.send(msg);
-			else
-				sockQueue.push(msg);
 		});
 
 		// Close one socket when the other one closes
-		var sockClosed = false;
-		var psockClosed = false;
 		sock.on("close", (code, msg) => {
 			sockClosed = true;
 			if (!psockClosed)
@@ -189,6 +189,16 @@ function Server(conf, port, protocol) {
 			psockClosed = true;
 			if (!psockClosed)
 				sock.close(code, msg);
+		});
+
+		// Catch errors
+		sock.on("error", err => {
+			console.trace(err);
+			sockClosed = true;
+		});
+		psock.on("error", err => {
+			console.trace(err);
+			psockClosed = true;
 		});
 	}
 
