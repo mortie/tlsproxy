@@ -149,13 +149,35 @@ function Server(conf, port, protocol) {
 
 		var psock = new WSClient(action.websocket);
 
-		psock.on("message", msg => {
-			sock.send(msg);
+		// Send queed messages when opening
+		var sockOpen = false;
+		var psockOpen = false;
+		var sockQueue = [];
+		var psockQueue = [];
+		sock.on("open", () => {
+			sockOpen = true;
+			sockQueue.forEach(msg => sock.send(msg));
 		});
-		sock.on("message", msg => {
-			psock.send(msg);
+		psock.on("open", () => {
+			psockOpen = true;
+			psockQueue.forEach(msg => psock.send(msg));
 		});
 
+		// Send messages, or queue them up
+		sock.on("message", msg => {
+			if (psockOpen)
+				psock.send(msg);
+			else
+				psockQueue.push(msg);
+		});
+		psock.on("message", msg => {
+			if (sockOpen)
+				sock.send(msg);
+			else
+				sockQueue.push(msg);
+		});
+
+		// Close one socket when the other one closes
 		var sockClosed = false;
 		var psockClosed = false;
 		sock.on("close", (code, msg) => {
