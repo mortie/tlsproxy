@@ -147,36 +147,39 @@ function Server(conf, port, protocol) {
 		if (action === undefined)
 			return console.log("Unknown websocket host: "+domain);
 
-		var sockOpen = true;
-		var psockOpen = false;
+		var sockQueue = [];
 		var psockQueue = [];
+		var sockOpened = false;
+		var psockOpened = false;
 		var sockClosed = false;
 		var psockClosed = false;
 
 		var psock = new WSClient(action.websocket);
 
-		// Send queued messages when opening
-		psock.on("open", () => {
-			psockOpen = true;
-			psockQueue.forEach(msg => psock.send(msg));
-		});
-
 		// Send messages, or queue them up
 		sock.on("message", msg => {
-			if (psockClosed)
-				return;
-
-			if (psockOpen)
+			if (psock.readyState === 1) {
+				if (!psockOpened) {
+					psockQueue.forEach(m => psock.send(m));
+					psockQueue = null;
+					psockOpened = true;
+				}
 				psock.send(msg);
-			else
+			} else if (!psockOpened) {
 				psockQueue.push(msg);
+			}
 		});
 		psock.on("message", msg => {
-			if (sockClosed)
-				return;
-
-			if (sockOpen)
+			if (sock.readyState === 1) {
+				if (!sockOpened) {
+					sockQueue.forEach(m => sock.send(m));
+					sockQuee = null;
+					sockOpened = true;
+				}
 				sock.send(msg);
+			} else if (!sockOpened) {
+				sockQueue.push(msg);
+			}
 		});
 
 		// Close one socket when the other one closes
@@ -194,11 +197,9 @@ function Server(conf, port, protocol) {
 		// Catch errors
 		sock.on("error", err => {
 			console.trace(err);
-			sockClosed = true;
 		});
 		psock.on("error", err => {
 			console.trace(err);
-			psockClosed = true;
 		});
 	}
 
