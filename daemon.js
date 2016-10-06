@@ -208,13 +208,6 @@ var ipcServer = net.createServer(conn => {
 			write(pmutil.proclist());
 			break;
 
-		case "reload":
-			httputil.cleanup(() => {
-				load();
-				write({});
-			});
-			break;
-
 		default:
 			write({});
 		}
