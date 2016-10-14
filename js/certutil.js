@@ -1,7 +1,8 @@
 var pathlib = require("path");
+var redirectHttps = require("redirect-https");
 var Lex = require("letsencrypt-express");
 
-var acmePath = "/tmp/acme-challenge";
+var acmePath = "/.well-known/acme-challenge";
 var server;
 
 var lexes = {};
@@ -72,7 +73,8 @@ function acmeResponder(cb) {
 			var domain = req.headers.host;
 			var responder = acmeResponders[domain];
 			if (!responder) {
-				responder = Lex.createAcmeResponder(lexes[domain], function() {});
+				var lex = lexes[domain];
+				responder = lex.middleware(redirectHttps());
 				acmeResponders[domain] = responder;
 			}
 

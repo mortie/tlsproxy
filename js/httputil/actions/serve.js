@@ -1,5 +1,6 @@
 var pathlib = require("path");
 var fs = require("fs");
+var mime = require("mime");
 
 module.exports = function(req, res, action) {
 	if (action.path === undefined) {
