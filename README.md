@@ -98,7 +98,7 @@ Here's a list of the properties a site object can have.
 	* Follows the same rules as `host`.
 * `action`:
 	* The action to be performed when someone requests the site.
-	* `type`: Can be either "proxy" or "redirect".
+	* `type`: Can be "proxy", "redirect", "serve", or "none".
 	* `to`: (if `type` is "redirect" or "proxy"):
 		* The host to proxy/redirect to.
 	* `websocket`: (if `type` is `proxy`):

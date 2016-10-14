@@ -12,9 +12,9 @@ exports.acmeResponder = acmeResponder;
 
 function register(conf, domain) {
 	if (conf.testing)
-		server = "https://acme-v01.api.letsencrypt.org/directory";
-	else
 		server = "staging";
+	else
+		server = "https://acme-v01.api.letsencrypt.org/directory";
 
 	var configDir = pathlib.join(conf.confpath, "letsencrypt");
 	if (conf.testing)
