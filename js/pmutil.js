@@ -59,16 +59,16 @@ class Process {
 		this.stopped = false;
 		this.running = true;
 		this.proc = childProcess.exec(this.cmd, this.options);
+		console.log(this.cmd);
+		console.log(this.options);
 
 		this.proc.stdout.on("data", d => {
-			console.log("on stdout");
 			d.toString().split("\n").forEach(l => {
 				if (l.trim() === "") return;
 				this.formatMsg(l);
 			});
 		});
 		this.proc.stderr.on("data", d => {
-			console.log("on stderr");
 			d.toString().split("\n").forEach(l => {
 				if (l.trim() === "") return;
 				this.formatMsg("stderr: "+l);
