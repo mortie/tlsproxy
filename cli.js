@@ -16,6 +16,101 @@ var mkdirp = require("mkdirp");
 var version = JSON.parse(
 	fs.readFileSync(__dirname+"/package.json", "utf-8")).version;
 
+// Calculate the display length of a string, stripping out escape codes
+function reallen(str) {
+	var len = 0;
+	var inColor = 0;
+	for (var i = 0; i < str.length; ++i) {
+		var c = str[i];
+		if (c === "\u001b") {
+			inColor = 1;
+		} else if (inColor === 1) {
+			if (c === "[")
+				inColor = 2;
+		} else if (inColor === 2) {
+			if (c === "m")
+				inColor = 0;
+		} else {
+			len += 1;
+		}
+	}
+
+	return len;
+}
+
+function printTable(arr) {
+	var maxlen = [];
+
+	var vline   = "\u2502".bold.grey; // │
+	var hline   = "\u2500".bold.grey; // ─
+	var vhcross = "\u253c".bold.grey; // ┼
+	var vright  = "\u251c".bold.grey; // ├
+	var vleft   = "\u2524".bold.grey; // ┤
+	var hup     = "\u2534".bold.grey; // ┴
+	var hdown   = "\u252c".bold.grey; // ┬
+	var ctl     = "\u250c".bold.grey; // ┌
+	var cbl     = "\u2514".bold.grey; // └
+	var ctr     = "\u2510".bold.grey; // ┐
+	var cbr     = "\u2518".bold.grey; // ┘
+
+	// Calcutare the biggest lengths for each column
+	arr.forEach(el => {
+		el.forEach((s, i) => {
+			s = s.toString();
+			if (maxlen[i] === undefined || maxlen[i] < s.length)
+				maxlen[i] = reallen(s);
+		});
+	});
+
+	// Create pretty lines
+	var tablesep = ""; // separator between names and values
+	var tabletop = ""; // top of the table
+	var tablebot = ""; // bottom of the table
+	maxlen.forEach((n, i) => {
+		tablesep += new Array(n + 3).join(hline);
+		tabletop += new Array(n + 3).join(hline);
+		tablebot += new Array(n + 3).join(hline);
+		if (i !== maxlen.length - 1) {
+			tablesep += vhcross;
+			tabletop += hdown;
+			tablebot += hup;
+		}
+	});
+	tablesep = vright + tablesep + vleft;
+	tabletop = ctl + tabletop + ctr;
+	tablebot = cbl + tablebot + cbr;
+
+	// Print the lines
+	console.log(tabletop);
+	arr.forEach((el, i) => {
+		var line = "";
+		el.forEach((s, j) => {
+			s = s.toString();
+			var len = maxlen[j];
+
+			// The first row should be colored, as it's the titles
+			if (i === 0)
+				s = s.bold.cyan;
+
+			// Right pad with spaces
+			var missing = len - reallen(s);
+			for (var k = 0; k < missing; ++k) s = s+" "
+
+			// Add |s
+			if (j !== 0)
+				s = " "+vline+" "+s;
+
+			line += s;
+		});
+		console.log(vline+" "+line+" "+vline);
+
+		// Print the separator between the titles and the values
+		if (i === 0)
+			console.log(tablesep);
+	});
+	console.log(tablebot);
+}
+
 function copy(p1, p2) {
 	var rs = fs.createWriteStream(p2);
 	fs.createReadStream(p1).pipe(rs);
@@ -137,18 +232,18 @@ var cmds = {
 	"proc-list": function() {
 		var conn = ipcConn();
 		conn.send("proc-list", {}, r => {
-			console.log("Processes:");
+			var table = [
+				[ "id", "state", "restarts" ]
+			];
 			r.forEach(proc => {
 				var state = proc.state;
 				if (state === "running") state = state.green.bold;
 				else if (state === "stopped") state = state.yellow.bold;
 				else state = state.red.bold;
 
-				console.log(
-					"id: "+proc.id+", "+
-					"state: "+state+", "+
-					"restarts: "+proc.restarts);
+				table.push([ proc.id, state, proc.restarts ]);
 			});
+			printTable(table);
 			process.exit();
 		});
 	},

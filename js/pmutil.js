@@ -59,8 +59,6 @@ class Process {
 		this.stopped = false;
 		this.running = true;
 		this.proc = childProcess.exec(this.cmd, this.options);
-		console.log(this.cmd);
-		console.log(this.options);
 
 		this.proc.stdout.on("data", d => {
 			d.toString().split("\n").forEach(l => {
