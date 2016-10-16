@@ -107,7 +107,9 @@ function add(path, obj) {
 		var exec = obj.exec;
 		throwIfMissing(path, [
 			[exec.at, "exec.at"],
-			[exec.run, "exec.run"]]);
+			[exec.run, "exec.run"],
+			[exec.id, "exec.id"]
+		]);
 
 		// Add PORT env variable if proxy
 		var env = exec.env || {};
@@ -147,14 +149,11 @@ function add(path, obj) {
 		}
 
 		if (gid !== null && uid !== null) {
-			pmutil.run({
+			pmutil.run(exec.id, exec.run, {
 				dir: exec.at,
-				cmd: exec.run,
 				env: env,
 				gid: gid,
-				uid: uid,
-				name: exec.name,
-				host: obj.host
+				uid: uid
 			});
 		}
 	}
@@ -191,25 +190,58 @@ try {
 		console.error(err);
 }
 
+function ipcServerHandler(name, data, write) {
+	switch (name) {
+	case "version":
+		write({
+			version: version
+		});
+		break;
+
+	case "proc-list":
+		write(pmutil.list());
+		break;
+
+	case "proc-start":
+		pmutil.start(data.id);
+		write();
+		break;
+
+	case "proc-stop":
+		pmutil.stop(data.id, () => {
+			write();
+		});
+		break;
+
+	case "proc-restart":
+		pmutil.restart(data.id, () => {
+			write();
+		});
+		break;
+
+	default:
+		write();
+	}
+}
+
 var ipcServer = net.createServer(conn => {
-	function write(obj) {
-		conn.write(JSON.stringify(obj));
+	function send(obj) {
+		conn.end(JSON.stringify(obj || {}));
 	}
 
 	conn.on("data", d => {
-		switch (d.toString()) {
-		case "version":
-			write({
-				version: version
-			});
-			break;
-
-		case "proc-list":
-			write(pmutil.proclist());
-			break;
-
-		default:
-			write({});
+		try {
+			var obj = JSON.parse(d);
+			ipcServerHandler(obj.name, obj.data, send);
+		} catch (err) {
+			try {
+				send({
+					error: err.toString()
+				});
+			} catch (err) {
+				console.error("Couldn't write to ipc socket");
+			}
+			console.trace(err);
 		}
 	});
 });
@@ -223,8 +255,12 @@ ipcServer.on("error", err => {
 function onTerm() {
 	pmutil.cleanup();
 	ipcServer.close(() => {
+		console.log("exiting");
 		process.exit(1);
 	});
+
+	// IPC server may hang, we want to exit even if that happens
+	setTimeout(() => process.exit(1), 1000);
 }
 
 process.on("SIGTERM", onTerm);

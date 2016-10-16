@@ -1,122 +1,182 @@
 var childProcess = require("child_process");
 
 exports.run = run;
-exports.proclist = proclist;
+exports.list = list;
+exports.start = start;
+exports.stop = stop;
+exports.restart = restart;
 exports.cleanup = cleanup;
 
 var processes = {};
 var restartLimit = 10;
 
-function format(proc, msg) {
-	return "process "+proc.id+": "+msg;
-}
+class Process {
+	constructor(id, cmd, options) {
+		this.proc = null;
+		this.running = false;
+		this.stopped = true;
+		this.id = id;
+		this.cmd = cmd;
+		this.options = options;
 
-function makeid(options) {
-	var id = "'"+options.cmd+"'";
-	id += " at "+options.dir;
-	if (typeof options.host === "string")
-		id += " for "+options.host;
-	else if (options.host instanceof Array && options.host[0])
-		id += " for "+options.host[0];
+		this.totalRestarts = 0;
+		this.restarts = 0;
+		this.restartsResetTimeout = null;
+		this.restartLimit = 5;
 
-	return id;
-}
-
-function makename(options) {
-	return options.name || makeid(options);
-}
-
-function exec(options, id) {
-	var proc = childProcess.exec(options.cmd, {
-		env: options.env,
-		cwd: options.dir,
-		uid: options.uid,
-		gid: options.gid
-	});
-	proc.running = true;
-	proc.name = makename(options);
-	proc.id = id;
-	processes[id] = proc;
-
-	proc.stdout.on("data", d => {
-		d = d.toString();
-		d.split("\n").forEach(line => {
-			if (line.trim() === "")
-				return;
-
-			console.log(format(proc, line));
-		});
-	});
-	proc.stderr.on("data", d => {
-		d = d.toString();
-		d.split("\n").forEach(line => {
-			if (line.trim() === "")
-				return;
-
-			console.error(format(proc, "stderr: "+line));
-		});
-	});
-
-	return proc;
-}
-
-function run(options) {
-	var id = makeid(options);
-	if (processes[id])
-		return console.log("Not starting process "+id+" because it already exists.");
-
-	console.log("Starting process "+id);
-
-	var proc = exec(options, id);
-
-	var restarts = 0;
-	var restartsResetTimeout;
-
-	function onexit(code) {
-		if (!proc.running)
-			return;
-
-		console.error(format(proc,
-			"Restarting after exit with code "+code));
-
-		restarts += 1;
-		if (restarts >= restartLimit) {
-			console.error(format(proc,
-				"Not restarting anymore after "+
-				restarts+" restarts."));
-			proc.running = false;
-			return;
-		}
-
-		if (restartsResetTimeout) {
-			clearTimeout(restartsResetTimeout);
-			restartsResetTimeout = null;
-		}
-
-		restartsResetTimeout = setTimeout(() => {
-			restarts = 0;
-		}, 5000);
-
-		proc = exec(options, id);
-		proc.on("exit", onexit);
+		console.log("Created process "+this.id);
 	}
 
-	proc.on("exit", onexit);
+	onexit(code) {
+		this.running = false;
+
+		// If the process exits, but we haven't stopped it, try to restart it
+		if (!this.stopped) {
+
+			if (this.restarts >= this.restartLimit) {
+				this.formatMsg("Not restarting anymore after "+this.restarts+" restarts.");
+			} else {
+				this.formatMsg("Restarting after exit with code "+code);
+				this.restarts += 1;
+				this.totalRestarts += 1;
+				this.start();
+
+				if (this.restartsResetTimeout) {
+					clearTimeout(this.restartsResetTimeout);
+					this.restartsResetTimeout = null;
+				}
+				this.restartsResetTimeout = setTimeout(() => {
+					this.restarts = 0;
+				}, 5000);
+			}
+		}
+	}
+
+	start() {
+		if (this.running && !this.stopped)
+			throw "Process "+this.id+" already running.";
+
+		this.stopped = false;
+		this.running = true;
+		this.proc = childProcess.exec(this.cmd, this.options);
+
+		this.proc.stdout.on("data", d => {
+			console.log("on stdout");
+			d.toString().split("\n").forEach(l => {
+				if (l.trim() === "") return;
+				this.formatMsg(l);
+			});
+		});
+		this.proc.stderr.on("data", d => {
+			console.log("on stderr");
+			d.toString().split("\n").forEach(l => {
+				if (l.trim() === "") return;
+				this.formatMsg("stderr: "+l);
+			});
+		});
+
+		this.proc.on("exit", code => this.onexit(code));
+	}
+
+	stop(cb) {
+		this.stopped = true;
+		this.proc.kill("SIGTERM");
+		var cbd = false;
+
+		// SIGKILL if we haven't exited in 2 seconds
+		setTimeout(() => {
+			if (this.stopped && this.running) {
+				console.log("Killing process "+this.id+" because it didn't stop on SIGTERM.");
+				this.proc.kill("SIGKILL");
+
+				if (!cbd) {
+					cb();
+					cbd = true;
+				}
+			}
+		}, 1000);
+
+		setTimeout(() => {
+			if (!this.running && !cbd) {
+				cb();
+				cbd = true;
+			}
+		}, 0);
+	}
+
+	formatMsg(msg) {
+		console.log("process "+this.id+": "+msg);
+	}
+
+	serialize() {
+		var state;
+		if (this.stopped && !this.running) state = "stopped";
+		else if (!this.stopped && this.running) state = "running";
+		else if (!this.stopped && !this.running) state = "errored";
+		else state = "invalid";
+
+		return {
+			id: this.id,
+			state: state,
+			restarts: this.totalRestarts
+		};
+	}
 }
 
-function proclist() {
+function run(id, cmd, options) {
+	var proc = new Process(id, cmd, options);
+	processes[proc.id] = proc;
+	proc.start();
+}
+
+function list() {
 	var res = [];
 	for (var i in processes) {
 		if (!processes.hasOwnProperty(i))
 			continue;
 
 		var proc = processes[i];
-		res.push({
-			name: proc.name,
-			running: proc.running
-		});
+		res.push(proc.serialize());
 	}
 	return res;
+}
+
+function start(id) {
+	var proc = processes[id];
+	if (!proc)
+		throw "Process "+id+" doesn't exist.";
+	if (proc.running)
+		throw "Process "+id+" is already running.";
+
+	proc.start();
+}
+
+function stop(id, cb) {
+	var proc = processes[id];
+	if (!proc)
+		throw "Process "+id+" doesn't exist.";
+	if (proc.stopped)
+		throw "Process "+id+" is already stopped.";
+
+	proc.stop(() => {
+		cb();
+	});
+}
+
+function restart(id, cb) {
+	var proc = processes[id];
+	if (!proc)
+		throw "Process "+id+" doesn't exist.";
+
+	function h() {
+		proc.start();
+		cb();
+	}
+
+	if (!proc.stopped)
+		proc.stop(h);
+	else
+		h();
 }
 
 function cleanup() {
@@ -126,9 +186,8 @@ function cleanup() {
 
 		var proc = processes[i];
 		if (!proc || !proc.running)
-			return;
+			continue;
 
-		proc.running = false;
-		proc.kill("SIGTERM");
+		proc.stop();
 	}
 }

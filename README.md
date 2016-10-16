@@ -115,7 +115,7 @@ Here's a list of the properties a site object can have.
 	  immediately after being started multiple times.
 	* `at`: The directory to run the process in.
 	* `run`: The command to be executed, interpreted by `/bin/sh`.
-	* `name`: The name of the process. If none is given, a name based on the
+	* `id`: The id of the process.
 	  host, command, and directory.
 	* `env`: Environment variables.
 	* `group`:

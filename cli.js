@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+var colors = require("colors");
+
 var confpath = process.env.PROXY_CONF;
 if (!confpath)
 	confpath = "/etc/tlsproxy";
@@ -32,11 +34,32 @@ function ipcConn() {
 	var conn;
 	try {
 		conn = net.createConnection(confpath+"/tlsproxy.sock");
+
+		function send(name, data, cb) {
+			var obj = {
+				name: name,
+				data: data
+			};
+			conn.write(JSON.stringify(obj));
+
+			conn.once("data", d => {
+				var obj = JSON.parse(d);
+				if (obj.error) {
+					console.error(obj.error);
+					process.exit(1);
+				}
+				cb(obj);
+			});
+		}
+
+		return {
+			send: send,
+		};
 	} catch (err) {
 		if (err.code === "ENOENT")
 			throw "tlsproxy is not running!";
 		else
-			throw err;
+			console.trace(err);
 	}
 	return conn;
 }
@@ -49,13 +72,15 @@ var cmds = {
 		console.log("\tversion:    show the version");
 		console.log("\tsetup:     set up init scripts and conf file");
 		console.log("\tproc-list: list processes managed by tlsproxy");
+		console.log("\tproc-start <id>: start a process");
+		console.log("\tproc-stop <id>: stop a process");
+		console.log("\tproc-restart <id>: restart a process");
 	},
 
 	"version": function() {
 		var conn = ipcConn();
-		conn.end("version");
-		conn.once("data", d => {
-			var srvver = JSON.parse(d).version;
+		conn.send("version", {}, r => {
+			var srvver = r.version;
 			console.log("Client version: "+version);
 			console.log("Server version: "+srvver);
 			process.exit();
@@ -103,8 +128,7 @@ var cmds = {
 
 	"reload": function() {
 		var conn = ipcConn();
-		conn.end("reload");
-		conn.once("data", d => {
+		conn.send("reload", {}, r => {
 			console.log("Reloaded.");
 			process.exit();
 		});
@@ -112,16 +136,41 @@ var cmds = {
 
 	"proc-list": function() {
 		var conn = ipcConn();
-		conn.end("proc-list");
-		conn.once("data", d => {
-			var obj = JSON.parse(d);
+		conn.send("proc-list", {}, r => {
 			console.log("Processes:");
-			obj.forEach(proc => {
+			r.forEach(proc => {
+				var state = proc.state;
+				if (state === "running") state = state.green.bold;
+				else if (state === "stopped") state = state.yellow.bold;
+				else state = state.red.bold;
+
 				console.log(
-					"name: "+proc.name+", "+
-					"running: "+proc.running);
+					"id: "+proc.id+", "+
+					"state: "+state+", "+
+					"restarts: "+proc.restarts);
 			});
 			process.exit();
+		});
+	},
+
+	"proc-start": function() {
+		var conn = ipcConn();
+		conn.send("proc-start", { id: process.argv[3] }, r => {
+			cmds["proc-list"]();
+		});
+	},
+
+	"proc-stop": function() {
+		var conn = ipcConn();
+		conn.send("proc-stop", { id: process.argv[3] }, r => {
+			cmds["proc-list"]();
+		});
+	},
+
+	"proc-restart": function() {
+		var conn = ipcConn();
+		conn.send("proc-restart", { id: process.argv[3] }, r => {
+			cmds["proc-list"]();
 		});
 	}
 };
