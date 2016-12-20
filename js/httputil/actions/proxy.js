@@ -14,9 +14,7 @@ module.exports = function(req, res, action) {
 
 	function onResponse(pres) {
 		res.writeHead(pres.statusCode, pres.headers);
-		pres
-			.on("data", d => res.write(d))
-			.on("end", () => res.end());
+		pres.pipe(res);
 	}
 
 	var options = {
@@ -38,9 +36,7 @@ module.exports = function(req, res, action) {
 		return res.end("Unknown protocol: "+url.protocol);
 	}
 
-	req
-		.on("data", d => preq.write(d))
-		.on("end", () => preq.end())
+	req.pipe(preq);
 
 	preq.on("error", err => {
 		res.writeHead(502);
