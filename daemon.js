@@ -149,7 +149,7 @@ function add(path, obj) {
 		}
 
 		if (gid !== null && uid !== null) {
-			pmutil.run(exec.id, exec.run, {
+			pmutil.add(exec.id, exec.run, {
 				cwd: exec.at,
 				env: env,
 				gid: gid,

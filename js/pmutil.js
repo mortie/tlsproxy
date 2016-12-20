@@ -1,6 +1,6 @@
 var childProcess = require("child_process");
 
-exports.run = run;
+exports.add = add;
 exports.list = list;
 exports.start = start;
 exports.stop = stop;
@@ -11,113 +11,134 @@ var processes = {};
 var restartLimit = 10;
 
 class Process {
-	constructor(id, cmd, options) {
+	constructor(id, run, options) {
 		this.proc = null;
 		this.id = id;
-		this.cmd = cmd;
+		this.cmd = run[0];
+		this.args = [];
 		this.options = options;
 		this.state = "stopped";
 		this.running = false;
 
+		for (var i = 1; i < run.length; ++i)
+			this.args.push(run[i]);
+
 		this.restarts = 0;
 		this.restartsResetTimeout = null;
-		this.restartLimit = 15;
-
-		console.log("Created process "+this.id);
+		this.restartLimit = 15
 	}
 
 	onexit(code) {
-
-		this.log("Process exited.");
+		this.log("Process exited with code "+code+".");
 		this.running = false;
 
-		// If the process isn't supposed to be running,
-		// just don't do anything
-		if (this.state !== "running")
+		if (this.state === "stopped")
 			return;
 
 		this.state = "errored";
 
 		if (this.restarts >= this.restartLimit) {
 			this.log("Not restarting anymore after "+this.restarts+" restarts.");
-			this.stop(function() {});
-		} else {
-			this.restarts += 1;
+			this.stop();
+			this.state = "errored";
+			return;
+		}
 
-			this.log(
-				"Restarting in "+this.restarts+" seconds "+
-					"after exit with code "+code+".");
+		this.restarts += 1;
 
-			if (this.restartsResetTimeout) {
-				clearTimeout(this.restartsResetTimeout);
-				this.restartsResetTimeout = null;
+		this.log("Restarting in "+this.restarts+" seconds.");
+
+		if (this.restartsResetTimeout) {
+			clearTimeout(this.restartsResetTimeout);
+			this.restartsResetTimeout = null;
+		}
+
+		setTimeout(() => {
+			if (this.state === "stopped") {
+				this.log("Not restarting anymore because state is stopped.");
+				return;
 			}
 
-			setTimeout(() => {
-				this.start();
-				this.restartsResetTimeout = setTimeout(() => {
-					this.restarts = 0;
-				}, 5000);
-			}, this.restarts * 1000);
-		}
+			this.start();
+			this.restartsResetTimeout = setTimeout(() => {
+				this.restarts = 0;
+			}, 5000);
+		}, this.restarts * 1000);
 	}
 
 	start() {
 		if (this.state === "running")
 			throw "Process "+this.id+" already running.";
 
-		this.log("Started process.");
-
-		this.running = true;
 		this.state = "running";
-		this.proc = childProcess.exec(this.cmd, this.options);
+		this.proc = childProcess.spawn(this.cmd, this.args, this.options);
+		this.running = true;
+		this.log("Started process with pid "+this.proc.pid+".");
 
 		this.proc.stdout.on("data", d => {
-			d.toString().split("\n").forEach(l => {
-				if (l.trim() === "") return;
-				this.log("stdout: "+l);
-			});
+			this.log(d.toString(), "stdout");
 		});
 		this.proc.stderr.on("data", d => {
-			d.toString().split("\n").forEach(l => {
-				if (l.trim() === "") return;
-				this.log("stderr: "+l);
-			});
+			this.log(d.toString(), "stderr");
+		});
+
+		this.proc.on("error", err => {
+			this.trace(err);
+			this.state = "errored";
+			this.running = false;
 		});
 
 		this.proc.on("exit", code => this.onexit(code));
 	}
 
 	stop(cb) {
+		if (!this.running && this.state === "stopped")
+			return cb();
+
+		cb = cb || function() {};
+
 		this.state = "stopped";
 		this.proc.kill("SIGTERM");
-		var cbd = false;
 
-		// SIGKILL if we haven't exited in 2 seconds
+		var done = false;
+
+		// SIGKILL if we haven't exited after a bit
 		setTimeout(() => {
-			if (this.state === "stopped" && this.running) {
+			if (this.running && !done) {
+				done = true;
 				this.log("Killing process because it didn't stop on SIGTERM.");
 				this.proc.kill("SIGKILL");
+				this.running = false;
+				this.state = "stopped";
 
-				if (!cbd) {
-					cbd = true;
-
-					setTimeout(cb, 100);
-				}
+				setTimeout(cb, 100);
+			} else if (!this.running && !done) {
+				cb();
 			}
 		}, 1000);
 
+		// If we exit immediately, SIGTERM isn't necessary
 		setTimeout(() => {
-			if (!this.running && !cbd) {
-				cbd = true;
-				setTimeout(cb, 100);
+			if (!this.running && !done) {
+				done = true;
+				cb();
 			}
-		}, 0);
+		}, 100);
 	}
 
-	log(msg) {
-		var str = "Process '"+this.id+"': "+msg;
-		console.log(str);
+	log(msg, prefix) {
+		msg = msg.substring(0, msg.length - 1);
+		msg.split("\n").forEach(l => {
+			if (prefix)
+				l = prefix+": "+l;
+
+			console.log("Process '"+this.id+"': "+l);
+		});
+	}
+
+	trace(err) {
+		console.log("Process '"+this.id+"': Error:");
+		console.trace(err);
 	}
 
 	serialize() {
@@ -129,8 +150,11 @@ class Process {
 	}
 }
 
-function run(id, cmd, options) {
-	var proc = new Process(id, cmd, options);
+function add(id, run, options) {
+	if (!(run instanceof Array))
+		throw "Expected run to be an array, got "+(typeof run);
+
+	var proc = new Process(id, run, options);
 	processes[proc.id] = proc;
 	proc.start();
 }
@@ -151,7 +175,7 @@ function start(id) {
 	var proc = processes[id];
 	if (!proc)
 		throw "Process "+id+" doesn't exist.";
-	if (proc.running)
+	if (proc.state === "running")
 		throw "Process "+id+" is already running.";
 
 	proc.start();
@@ -161,12 +185,10 @@ function stop(id, cb) {
 	var proc = processes[id];
 	if (!proc)
 		throw "Process "+id+" doesn't exist.";
-	if (proc.stopped)
+	if (proc.state === "stopped")
 		throw "Process "+id+" is already stopped.";
 
-	proc.stop(() => {
-		cb();
-	});
+	proc.stop(cb);
 }
 
 function restart(id, cb) {

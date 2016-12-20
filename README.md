@@ -114,7 +114,8 @@ Here's a list of the properties a site object can have.
 	* The process is automatically restarted if it dies, unless it dies
 	  immediately after being started multiple times.
 	* `at`: The directory to run the process in.
-	* `run`: The command to be executed, interpreted by `/bin/sh`.
+	* `run`: An array. The first entry is the command to run, the subsequent
+	  are the arguments.
 	* `id`: The id of the process.
 	  host, command, and directory.
 	* `env`: Environment variables.
